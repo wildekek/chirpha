@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+#/command/execlineb -P
+#set -x
+#echo "++ redis ++"
+
+if ! [ -d "/data/redis" ]; then
+    mkdir /data/redis
+fi
+
+#   redis-server
+ps -A | grep -q "redis\-server \*\:"
+if [ $? == 0 ]; then
+    exit 0
+fi
+signal_redis &
+redis-server /etc/redis.conf

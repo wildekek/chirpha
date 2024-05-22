@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+#set -x
+#echo "++ gateway ++"
+
+#chirpstack-gateway-bridge
+if [ -d "/share/chirpstack/etc/chirpstack-gateway-bridge" ]; then
+    cp /share/chirpstack/etc/chirpstack-gateway-bridge/* /etc/chirpstack-gateway-bridge
+fi
+exec chirpstack-gateway-bridge

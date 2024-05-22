@@ -1,0 +1,183 @@
+# Home Assistant Add-on: ChisrpStack server
+
+## Installation
+
+Follow these steps to get the add-on installed on your system:
+
+1. Navigate in your Home Assistant frontend to **Settings** -> **Add-ons** -> **Add-on store**.
+2. Find the "ChirpStack Server" add-on and click it.
+3. Click on the "INSTALL" button.
+
+## How to use
+
+ChirpStack Server add-on integrates ChirpStack server, Redis, PostgreSQL and small Python management component into single unit that could be installed on Home Assistant managed system with Mosquitto MQTT broker. Add-on allows to integrate LoraWAN devices into HA system via MQTT integration. Python management component registers all known and enabled in ChirpStack LoraWAN devices within MQTT, handles battery level set-up at service start, restores known sensor values and synchronize device list upon request. Device registration is handled via ChirpStack WWW interface and this may include updates in device Codec javascript code.
+Before add-on is installed you need to create Mosquitto MQTT broker user/password (remember that `homeassistant` or `addons` user names are reserved) with authority to subscribe/publish any topic. Recent version uses plain MQTT connection without any certificates on default port 1883.
+
+The add-on need to configured before started, see **Configuration** section for details. Start add-on, initial start-up requires more time that successive startups. There is option to restore ChirpStack PostgreSQL database from backup file in HA /share/chirpstack/chirp_db, on success backup file is renamed to chirp_db.restored .
+
+"Chirp2MQTT Bridge" device should show up as parent for all other LoraWAN devices managed by ChirpStack server. Bridge device exposes 'Reload devices' control to synchronize device list with server. Child devices are listed under "Connected devices". Child names are retrieved from ChirpStack server and must be managed from here. Integration uses LoRa deveui to identify device internally.
+
+Add-on on start-up searches for specific configuration files in HA directories /share/chirpstack/etc/chirpstack and /share/chirpstack/etc/chirpstack-gateway-bridge and replaces default configuration files with those customized. Default ChirpStack configuration files assumes on Semtech interface on port 1700.
+Python management component ensures that ChirpStack have at least 1 tenant and 1 application in its database by creating missing objects.
+
+## Configuration
+
+Add-on default configuration in yaml format:
+
+```yaml
+application_id: 72a56954-700f-4a52-90d2-86cf76df5c57
+mqtt_user: loramqtt
+mqtt_password: ploramqtt
+discovery_prefix: homeassistant
+options_start_delay: 2
+options_restore_age: 4
+options_debug_print_payload: false
+log_level: info
+```
+
+### Option: `application_id` (optional)
+
+ChirpStack application id that hosts LoRaWAN devices.
+
+Default value: 1st tenant's 1st application id.
+
+#### Option: `mqtt_user` (required)
+
+Set to created MQTT user id.
+
+#### Option: `mqtt_password` (optional)
+
+Set to created MQTT user password.
+
+### Option: `discovery_prefix` (optional)
+
+HA MQTT integration discovery prefix.
+
+Default value: 'homeassistant'.
+
+### Option: `options_start_delay` (optional)
+
+Delay in seconds between device registration in HA MQTT integration and it's usage start.
+
+Default value: 2 .
+
+### Option: `options_restore_age` (optional)
+
+Time period in seconds to wait for device to show up for sensor value restoration.
+
+Default value: 4 .
+
+### Option: `options_debug_print_payload` (optional)
+
+Controls topic payload logging level.
+
+Default value: 'false' .
+
+### Option: `log_level`
+
+Python management application log level, one of 'critical', 'fatal', 'critical', 'error', 'warning', 'info', 'debug' .
+
+Default value: 'info' .
+
+## Support
+
+[chirpstack]: https://chirpstack.io
+[homeassisatnt]: https://www.home-assistant.io/
+
+## Codec updates
+
+Regular ChirpStack codec contains entries supporting payload decoding/encoding. Codec must be appended by function similar to:
+
+```
+function getHaDeviceInfo() {
+  return {
+    device: {
+      manufacturer: "Milesight IoT Co., Ltd",
+      model: "WS52x"
+    },
+    entities: {
+        current:{
+        entity_conf: {
+          value_template: "{{ (value_json.object.current | float) / 1000 }}",
+          entity_category: "diagnostic",
+          state_class: "measurement",
+          device_class: "current",
+          unit_of_measurement: "A"
+        }
+      },
+        factor:{
+        entity_conf: {
+          value_template: "{{ (value_json.object.factor | float) / 100 }}",
+          entity_category: "diagnostic",
+          state_class: "measurement",
+          device_class: "power_factor",
+        }
+      },
+      power:{
+        entity_conf: {
+          value_template: "{{ value_json.object.power | float }}",
+          entity_category: "diagnostic",
+          state_class: "measurement",
+          device_class: "power",
+          unit_of_measurement: "W"
+        }
+      },
+      voltage:{
+        entity_conf: {
+          value_template: "{{ value_json.object.voltage | float }}",
+          entity_category: "diagnostic",
+          state_class: "measurement",
+          device_class: "voltage",
+          unit_of_measurement: "V"
+        }
+      },
+      outage:{
+        integration: "binary_sensor",
+        entity_conf: {
+          entity_category: "diagnostic",
+          device_class: "power"
+        }
+      },
+      power_sum:{
+        entity_conf: {
+          value_template: "{{ (value_json.object.power_sum | float) / 1000 }}",
+          state_class: "total_increasing",
+          device_class: "energy",
+          unit_of_measurement: "kWh"
+        }
+      },
+      state:{
+       integration: "switch",
+       entity_conf: {
+          value_template: "{{ value_json.object.state }}",
+          command_topic: "{command_topic}",
+          state_on: "open",
+          state_off: "close",
+          payload_off: '{{"dev_eui":"{dev_eui}","confirmed":true,"fPort":85,"data":"CAAA/w=="}}',
+          payload_on: '{{"dev_eui":"{dev_eui}","confirmed":true,"fPort":85,"data":"CAEA/w=="}}'
+        }
+      },
+      rssi:{
+        entity_conf: {
+          value_template: "{{ value_json.rxInfo[-1].rssi | int }}",
+          entity_category: "diagnostic",
+          device_class: "signal_strength",
+          unit_of_measurement: "dBm",
+        }
+      }
+    }
+  };
+}
+```
+This function returns structure that describes device and its entities in terms of Home Assistant. Substructure device: {} describes HA MQTT device and is applied to all substructures under entities: {}.
+Device description contains manufacturer and model information that is used only as reference. Add-on adds
+- device name as in ChirpStack
+- identifier based on deveui to join all entities (sensors) together into device
+- via_device field to show bridge device as parent .
+Entities (sensors) structure contains
+- entity name; name must match one used in decode function that is defined above and is supplied by device vendor;
+- integration and entity_conf is defined on the next level of structure;
+- integration and entity_conf is defined on the next level of structure;
+- integration sets MQTT integration name, this must be one of "humidifier", "binary_sensor", "sensor"; if device class is set in it may allow to automatically select integration;
+- entity_conf defines fields that control device sensor appearance in MQTT integration; value_template describes how to extract sensor value from payload, default is value_template: "{{ value_json.entity_name }}". Usually value need to be converted to specific type (int, float).
+

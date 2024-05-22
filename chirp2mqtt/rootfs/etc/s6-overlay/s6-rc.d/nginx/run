@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+#/command/execlineb -P
+set -x
+echo "++ nginx ++"
+
+cp /etc/nginx.conf.gtpl /tmp/nginx.conf
+nginx -T -c /tmp/nginx.conf
+
+exec nginx -c /tmp/nginx.conf

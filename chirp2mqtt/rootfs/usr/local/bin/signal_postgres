@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+#set -x
+
+while [[ "$(su-exec postgres pg_isready)" != *accepting* ]]
+do
+    sleep 1
+done
+
+echo >&5
+
+#echo "-- postgres --"

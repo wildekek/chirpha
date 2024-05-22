@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+set -x
+start_chirp_ha.sh

@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+#echo "++ postgres ++"
+#set -x
+
+export LANG="C.UTF-8"
+export PGDATA="/data/postgres"
+export POSTGRES_PASSWORD="password"
+
+if ! [ -d "/data/postgres" ]; then
+    mkdir /data/postgres
+fi
+
+signal_postgres &
+#   while [[ "$(su-exec postgres pg_isready)" != *connections ]]
+docker-entrypoint.sh postgres

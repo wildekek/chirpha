@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+#set -x
+
+for portotest in ":6379"
+do
+    netstat -tulpn 2>/dev/null | grep -q "$portotest"
+    while [ $? != 0 ]
+    do
+        sleep 1
+        netstat -tulpn 2>/dev/null | grep -q "$portotest"
+    done
+done
+
+echo >&4
+
+#echo "-- redis --"

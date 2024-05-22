@@ -1,0 +1,6 @@
+{
+    "terminal.integrated.env.linux": {
+        "PATH": "${workspaceFolder}/chirp2mqtt/rootfs/usr/tests:${env:PATH}",
+        "PYTHONPATH": "${workspaceFolder}/chirp2mqtt/rootfs/usr/"
+    }
+}

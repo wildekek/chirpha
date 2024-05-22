@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#set -x
+#echo "++ chirpha ++"
+
+cd /
+exec python3 -m usr.chirpha.start

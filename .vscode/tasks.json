@@ -1,0 +1,71 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start Home Assistant",
+      "type": "shell",
+      "command": "supervisor_run",
+      "group": {
+        "kind": "test",
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Stop chirp",
+      "type": "shell",
+      "command": "$HOME/stopchirpstack",
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "Copy chirp",
+      "type": "shell",
+      "command": "$HOME/chirptoha",
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "Copy web chirp",
+      "type": "shell",
+      "command": "$HOME/chirpwebtoha",
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "docker-build",
+      "type": "docker-build",
+      "dockerBuild": {
+        "context": "${workspaceFolder}/chirp2mqtt",
+        "buildArgs": {"BUILD_FROM": "ghcr.io/hassio-addons/base:15.0.8", "BUILD_ARCH": "amd64",
+        "CHIRPSTACK_VERSION": "4.7.0",
+        "CHIRPSTACK_GATEWAY_BRIDGE_VERSION": "4.0.11"
+      }
+      }
+    },
+    {
+      "label": "Start Home Assistant",
+      "type": "shell",
+      "command": "supervisor_run",
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
+    }
+
+  ]
+}

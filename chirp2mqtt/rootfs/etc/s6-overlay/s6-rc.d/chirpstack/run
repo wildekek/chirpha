@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+#echo "++ chirpstack ++"
+#set -x
+
+INITIALIZED="/data/chirpstack_tables_initialized"
+
+if [ -f "/share/chirpstack/chirp_db" ]; then
+    su-exec postgres psql -c "drop database if exists chirpstack;"
+    su-exec postgres psql -c "drop role if exists chirpstack;"
+    su-exec postgres psql -c "create role chirpstack with login password 'chirpstack';"
+    su-exec postgres psql -c "create database chirpstack with owner chirpstack;"
+    su-exec postgres psql -d chirpstack < /share/chirpstack/chirp_db >/dev/null
+    if [[ $? -eq 0 ]]; then
+        touch $INITIALIZED
+        mv /share/chirpstack/chirp_db /share/chirpstack/chirp_db.restored
+    fi
+fi
+
+if ! [ -f "$INITIALIZED" ]; then
+    su-exec postgres psql -c "drop database if exists chirpstack;"
+    su-exec postgres psql -c "drop role if exists chirpstack;"
+    su-exec postgres psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --no-password --no-psqlrc -f /etc/postgres_chirp.sql
+    if [ -d "/data/temp" ]; then
+        rm -r /data/temp
+    fi
+    mkdir /data/temp
+    git clone https://github.com/brocaar/lorawan-devices /data/temp/lorawan-devices >/dev/null 2>/dev/null
+    chirpstack -c /etc/chirpstack import-legacy-lorawan-devices-repository -d /data/temp/lorawan-devices >/dev/null
+    if [[ $? -eq 0 ]]; then
+        touch $INITIALIZED
+    fi
+    rm -r /data/temp
+fi
+
+#chirpstack -c /etc/chirpstack
+if [ -d "/share/chirpstack/etc/chirpstack" ]; then
+    cp /share/chirpstack/etc/chirpstack/* /etc/chirpstack
+fi
+
+#ls /package/admin/s6-overlay/command/with-contenv -l
+#bashio /usr/local/bin/upd_chirpstack_conf
+
+signal_chirpstack &
+chirpstack -c /etc/chirpstack

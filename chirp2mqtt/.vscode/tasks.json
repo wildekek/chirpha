@@ -1,0 +1,17 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "docker-build",
+      "type": "docker-build",
+      "dockerBuild": {
+        "context": "${workspaceFolder}/chirp2mqtt",
+        "buildArgs": {"BUILD_FROM": "ghcr.io/hassio-addons/base:15.0.8", "BUILD_ARCH": "amd64",
+        "CHIRPSTACK_VERSION": "4.7.0",
+        "CHIRPSTACK_GATEWAY_BRIDGE_VERSION": "4.0.111"
+      }
+      }
+    }
+
+  ]
+}

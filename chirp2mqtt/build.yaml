@@ -1,0 +1,14 @@
+#image: ghcr.io/home-assistant/{arch}-base
+build_from:
+  aarch64: ghcr.io/hassio-addons/base:15.0.8
+  amd64: ghcr.io/hassio-addons/base:15.0.8
+  armv7: ghcr.io/hassio-addons/base:15.0.8
+args:
+  CHIRPSTACK_VERSION: 4.7.0
+  CHIRPSTACK_GATEWAY_BRIDGE_VERSION: 4.0.11
+
+#cosign:
+#  identity: https://github.com/home-assistant/docker-base/.*
+#labels:
+#  io.hass.base.name: alpine
+#  org.opencontainers.image.source: https://github.com/home-assistant/docker-base
