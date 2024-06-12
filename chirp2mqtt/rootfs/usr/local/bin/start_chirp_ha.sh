@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # sudo docker run -it -v /home/modrisb/contributions/data:/data -p 8080:8080  -e POSTGRES_PASSWORD=secret --entrypoint /bin/bash chirpstack:latest
 #sudo docker run -it -v /home/modrisb/contributions/data:/data -v /home/modrisb/contributions/share:/share -p 8080:8080  chirpstack:latest
-# pg_dump -h localhost chirpstack -U chirpstack -W > /share/chirpstack/chirp_db0
+# pg_dump -h localhost chirpstack -U chirpstack -W > /share/chirp2mqtt/chirp_db0
 # su - -c "postgres psql -U chirpstack -W < /data/chirp_db"
 set -x
 
@@ -36,12 +36,12 @@ do
     sleep 1
 done
 
-if [ -f "/share/chirpstack/chirp_db" ]; then
+if [ -f "/share/chirp2mqtt/chirp_db" ]; then
     su-exec postgres psql -c "drop database if exists chirpstack;"
     su-exec postgres psql -c "drop role if exists chirpstack;"
     su-exec postgres psql -c "create role chirpstack with login password 'chirpstack';"
     su-exec postgres psql -c "create database chirpstack with owner chirpstack;"
-    su-exec postgres psql -d chirpstack < /share/chirpstack/chirp_db >/dev/null
+    su-exec postgres psql -d chirpstack < /share/chirp2mqtt/chirp_db >/dev/null
     #su-exec postgres createdb -h localhost -p 5432 -U xxuserxx -T template0 test
     #su-exec postgres pg_restore -h localhost -p 5432 -U xxuserxx -d test db.dump
     #su-exec postgres createdb -h localhost -U chirpstack -W chirpstack
@@ -49,7 +49,7 @@ if [ -f "/share/chirpstack/chirp_db" ]; then
     #pg_restore -h localhost -C -d chirpstack /data/chirp.dump
     if [[ $? -eq 0 ]]; then
         touch $INITIALIZED
-        mv /share/chirpstack/chirp_db /share/chirpstack/chirp_db.restored
+        mv /share/chirp2mqtt/chirp_db /share/chirp2mqtt/chirp_db.restored
     fi
 fi
 
@@ -82,8 +82,8 @@ done
 #chirpstack -c /etc/chirpstack
 ps -A | grep -q "chirpstack \-c \/etc\/chirpstack"
 if [ $? != 0 ]; then
-    if [ -d "/share/chirpstack/etc/chirpstack" ]; then
-        cp /share/chirpstack/etc/chirpstack/* /etc/chirpstack
+    if [ -d "/share/chirp2mqtt/etc/chirpstack" ]; then
+        cp /share/chirp2mqtt/etc/chirpstack/* /etc/chirpstack
     fi
     chirpstack -c /etc/chirpstack &
 fi
@@ -101,8 +101,8 @@ done
 #chirpstack-gateway-bridge
 ps -A | grep -q "chirpstack\-gateway\-bridge"
 if [ $? != 0 ]; then
-    if [ -d "/share/chirpstack/etc/chirpstack-gateway-bridge" ]; then
-        cp /share/chirpstack/etc/chirpstack-gateway-bridge/* /etc/chirpstack-gateway-bridge
+    if [ -d "/share/chirp2mqtt/etc/chirpstack-gateway-bridge" ]; then
+        cp /share/chirp2mqtt/etc/chirpstack-gateway-bridge/* /etc/chirpstack-gateway-bridge
     fi
     chirpstack-gateway-bridge &
 fi

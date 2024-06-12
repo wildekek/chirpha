@@ -4,15 +4,15 @@
 
 INITIALIZED="/data/chirpstack_tables_initialized"
 
-if [ -f "/share/chirpstack/chirp_db" ]; then
+if [ -f "/share/chirp2mqtt/chirp_db" ]; then
     su-exec postgres psql -c "drop database if exists chirpstack;"
     su-exec postgres psql -c "drop role if exists chirpstack;"
     su-exec postgres psql -c "create role chirpstack with login password 'chirpstack';"
     su-exec postgres psql -c "create database chirpstack with owner chirpstack;"
-    su-exec postgres psql -d chirpstack < /share/chirpstack/chirp_db >/dev/null
+    su-exec postgres psql -d chirpstack < /share/chirp2mqtt/chirp_db >/dev/null
     if [[ $? -eq 0 ]]; then
         touch $INITIALIZED
-        mv /share/chirpstack/chirp_db /share/chirpstack/chirp_db.restored
+        mv /share/chirp2mqtt/chirp_db /share/chirp2mqtt/chirp_db.restored
     fi
 fi
 
@@ -33,8 +33,8 @@ if ! [ -f "$INITIALIZED" ]; then
 fi
 
 #chirpstack -c /etc/chirpstack
-if [ -d "/share/chirpstack/etc/chirpstack" ]; then
-    cp /share/chirpstack/etc/chirpstack/* /etc/chirpstack
+if [ -d "/share/chirp2mqtt/etc/chirpstack" ]; then
+    cp /share/chirp2mqtt/etc/chirpstack/* /etc/chirpstack
 fi
 
 #ls /package/admin/s6-overlay/command/with-contenv -l
