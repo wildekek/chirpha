@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+id=$(docker ps | grep chirp2mqtt | awk '{print $1}')
+docker stop "$id"

@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+/home/modrisb/contributions/pijups/chirpha/chirpversion
+ssh root@ha.c24 "rm -r /addons/chirp2mqtt"
+ssh root@ha.c24 "mkdir /addons/chirp2mqtt"
+scp -r /home/modrisb/contributions/pijups/chirpha/chirp2mqtt/rootfs root@ha.c24:/addons/chirp2mqtt
+scp -r /home/modrisb/contributions/pijups/chirpha/chirp2mqtt/translations root@ha.c24:/addons/chirp2mqtt
+scp /home/modrisb/contributions/pijups/chirpha/chirp2mqtt/build.yaml root@ha.c24:/addons/chirp2mqtt
+scp /home/modrisb/contributions/pijups/chirpha/chirp2mqtt/CHANGELOG.md root@ha.c24:/addons/chirp2mqtt
+scp /home/modrisb/contributions/pijups/chirpha/chirp2mqtt/config.yaml root@ha.c24:/addons/chirp2mqtt
+scp /home/modrisb/contributions/pijups/chirpha/chirp2mqtt/Dockerfile root@ha.c24:/addons/chirp2mqtt
+scp /home/modrisb/contributions/pijups/chirpha/chirp2mqtt/DOCS.md root@ha.c24:/addons/chirp2mqtt
+scp /home/modrisb/contributions/pijups/chirpha/chirp2mqtt/icon.png root@ha.c24:/addons/chirp2mqtt
+scp /home/modrisb/contributions/pijups/chirpha/chirp2mqtt/LICENSE root@ha.c24:/addons/chirp2mqtt
+scp /home/modrisb/contributions/pijups/chirpha/chirp2mqtt/logo.png root@ha.c24:/addons/chirp2mqtt
+scp /home/modrisb/contributions/pijups/chirpha/chirp2mqtt/README.md root@ha.c24:/addons/chirp2mqtt
+
