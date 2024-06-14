@@ -22,7 +22,10 @@ WORKDIR /usr/local/bin
 RUN \
     apk --no-cache add python3 \
     && apk --no-cache add py3-pip \
+#
+#    && pip3 install grpcio==1.64.1 \
     && pip3 install chirpstack-api==4.7.0 paho-mqtt --break-system-packages \
+#    && pip3 install chirpstack-api paho-mqtt --break-system-packages \
     && apk --no-cache add git redis postgresql postgresql-contrib su-exec \
     && sed -i 's/protected-mode yes/protected-mode no/' /etc/redis.conf \
     && sed -i 's/^\(bind .*\)$/# \1/' /etc/redis.conf \
