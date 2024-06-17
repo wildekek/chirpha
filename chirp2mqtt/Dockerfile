@@ -22,6 +22,7 @@ WORKDIR /usr/local/bin
 RUN \
     apk --no-cache add python3 \
     && apk --no-cache add py3-pip \
+#    && apk del grpcio \
 #
 #    && pip3 install grpcio==1.64.1 \
     && pip3 install chirpstack-api==4.7.0 paho-mqtt --break-system-packages \

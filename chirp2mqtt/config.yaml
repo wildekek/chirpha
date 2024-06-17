@@ -1,6 +1,6 @@
 # https://developers.home-assistant.io/docs/add-ons/configuration#add-on-config
 name: Chirp2MQTT
-version: "1.1.94"
+version: "1.1.100"
 slug: chirp2mqtt
 description: HA add-on to incorporatex ChirpStack LoraWan devices into MQTT integration
 arch:
