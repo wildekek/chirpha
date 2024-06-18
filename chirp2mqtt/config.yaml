@@ -13,9 +13,9 @@ startup: application
 webui: http://[HOST]:[PORT:8080]
 boot: auto
 ports:
-  8080/tcp: 8088
+  8080/tcp: 8080
 #  8099/tcp: 8099
-  1700/udp: 1708
+  1700/udp: 1700
 ports_description:
   8080/tcp: "ChirpStack server WEB UI port"
   1700/udp: "Port to receive LoraWAN packets"
@@ -50,6 +50,6 @@ timeout: 10
 services:
   - mqtt:need
 stage: experimental
-ingress: true
+#ingress: true
 #ingress_port: 8080
 #ingress_entry: local-chirp2mqtt
