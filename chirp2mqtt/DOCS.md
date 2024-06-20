@@ -1,16 +1,17 @@
-# Home Assistant Add-on: ChisrpStack server
+# Home Assistant Add-on: Chirp2MQTT middleware
 
 ## Installation
 
 Follow these steps to get the add-on installed on your system:
 
 1. Navigate in your Home Assistant frontend to **Settings** -> **Add-ons** -> **Add-on store**.
-2. Find the "ChirpStack Server" add-on and click it.
-3. Click on the "INSTALL" button.
+2. Add https://github.com/modrisb/chirpha to repository list.
+3. Find the "Chirp2MQTT" add-on and click it.
+4. Click on the "INSTALL" button.
 
 ## How to use
 
-ChirpStack Server add-on integrates ChirpStack server, Redis, PostgreSQL and small Python management component into single unit that could be installed on Home Assistant managed system with Mosquitto MQTT broker. Add-on allows to integrate LoraWAN devices into HA system via MQTT integration. Python management component registers all known and enabled in ChirpStack LoraWAN devices within MQTT, handles battery level set-up at service start, restores known sensor values and synchronize device list upon request. Device registration is handled via ChirpStack WWW interface and this may include updates in device Codec javascript code.
+Chirp2MQTT middleware add-on integrates ChirpStack server, Redis, PostgreSQL and small Python management component into single unit that could be installed on Home Assistant managed system with Mosquitto MQTT broker. Add-on allows to integrate LoraWAN devices into HA system via MQTT integration. Python management component registers all known and enabled in ChirpStack LoraWAN devices within MQTT, handles battery level set-up at service start, restores known sensor values and synchronize device list upon request. Device registration is handled via ChirpStack WWW interface and this may include updates in device Codec javascript code.
 Before add-on is installed you need to create Mosquitto MQTT broker user/password (remember that `homeassistant` or `addons` user names are reserved) with authority to subscribe/publish any topic. Recent version uses plain MQTT connection without any certificates on default port 1883.
 
 The add-on need to configured before started, see **Configuration** section for details. Start add-on, initial start-up requires more time that successive startups. There is option to restore ChirpStack PostgreSQL database from backup file in HA /share/chirp2mqtt/chirp_db, on success backup file is renamed to chirp_db.restored .
@@ -39,7 +40,7 @@ log_level: info
 
 ChirpStack application id that hosts LoRaWAN devices.
 
-Default value: 1st tenant's 1st application id.
+Default value: 1st tenant's 1st application id. Default value is used also in case if application_id does not exist.
 
 #### Option: `mqtt_user` (required)
 
@@ -83,6 +84,7 @@ Default value: 'info' .
 
 [chirpstack]: https://chirpstack.io
 [homeassisatnt]: https://www.home-assistant.io/
+[chirp2mqtt]: https://github.com/modrisb/chirpha
 
 ## Codec updates
 

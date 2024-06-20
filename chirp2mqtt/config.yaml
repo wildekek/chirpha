@@ -1,6 +1,6 @@
 # https://developers.home-assistant.io/docs/add-ons/configuration#add-on-config
 name: Chirp2MQTT
-version: "1.1.101"
+version: "1.1.102"
 slug: chirp2mqtt
 description: HA add-on to incorporatex ChirpStack LoraWan devices into MQTT integration
 arch:
@@ -8,13 +8,12 @@ arch:
   - armv7
   - aarch64
   - amd64
-url: "https://github.com/home-assistant/addons-example/tree/main/example"
+url: "https://github.com/modrisb/chirpha"
 startup: application
 webui: http://[HOST]:[PORT:8080]
 boot: auto
 ports:
   8080/tcp: 8080
-#  8099/tcp: 8099
   1700/udp: 1700
 ports_description:
   8080/tcp: "ChirpStack server WEB UI port"
@@ -43,13 +42,8 @@ schema:
   options_start_delay: "int"
   options_restore_age: "int"
   options_debug_print_payload: bool
-#  log_level: "match(debug|info|warning|error|fatal|critical)?"
-  log_level: "str?"
+  log_level: "match(debug|info|warning|error|fatal|critical)?"
 timeout: 10
-#image: "ghcr.io/home-assistant/chirp2mqtt-{arch}"
 services:
   - mqtt:need
 stage: experimental
-#ingress: true
-#ingress_port: 8080
-#ingress_entry: local-chirp2mqtt
