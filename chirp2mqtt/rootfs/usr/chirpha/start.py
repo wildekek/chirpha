@@ -1,6 +1,6 @@
 """The Chirpstack LoRaWan integration - setup."""
 from __future__ import annotations
-__version__ = "1.1.45"
+__version__ = "1.1.46"
 
 import logging
 import logging.handlers
@@ -9,14 +9,10 @@ import signal
 import os
 from pathlib import Path
 from typing import Final
-#import asyncio
-#import websockets
-#import threading
-
 
 from .grpc import ChirpGrpc
 from .mqtt import ChirpToHA
-from .const import CONF_API_KEY, CONF_API_PORT, CONF_API_SERVER, CONF_APPLICATION_ID, CHIRPSTACK_TENANT, CHIRPSTACK_APPLICATION
+from .const import CONF_APPLICATION_ID
 
 # Date/Time formats
 FORMAT_DATE: Final = "%Y-%m-%d"
@@ -25,7 +21,6 @@ FORMAT_DATETIME: Final = f"{FORMAT_DATE} {FORMAT_TIME}"
 FMT = ( "%(asctime)s.%(msecs)03d chirpha %(levelname)s [%(name)s] %(message)s" )
 CONFIGURATION_FILE = '/data/options.json'
 
-#logging.basicConfig(format=fmt, datefmt=FORMAT_DATETIME, level=logging.INFO)
 _LOGGER = logging.getLogger(__name__)
 
 INTERNAL_CONFIG = {
@@ -41,7 +36,6 @@ class run_chirp_ha:
         self._mqtt_client = None
         self._config = None
         signal.signal(signal.SIGTERM, self.stop_chirp_ha)
-#        signal.signal(signal.SIGINT, self.stop_chirp_ha)
         pass
 
     def stop_chirp_ha(self, signum, frame):

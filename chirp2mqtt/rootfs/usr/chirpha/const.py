@@ -6,7 +6,6 @@ DEFAULT_NAME = "Chirp"
 
 CONF_API_SERVER = "chirpstack_api_server"
 CONF_API_PORT = "server_port"
-CONF_API_KEY = "api_connection_key"
 CONF_TENANT = "tenant"
 CONF_APPLICATION = "application_name"
 CONF_APPLICATION_ID = "application_id"

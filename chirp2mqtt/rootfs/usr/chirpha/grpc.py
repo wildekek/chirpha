@@ -8,7 +8,7 @@ import subprocess
 from chirpstack_api import api
 import grpc
 
-from .const import CONF_API_KEY, CONF_API_PORT, CONF_API_SERVER, CONF_APPLICATION_ID, CHIRPSTACK_TENANT, CHIRPSTACK_APPLICATION
+from .const import CONF_API_PORT, CONF_API_SERVER, CONF_APPLICATION_ID, CHIRPSTACK_TENANT, CHIRPSTACK_APPLICATION
 
 
 _LOGGER = logging.getLogger(__name__)

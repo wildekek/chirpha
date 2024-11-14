@@ -17,7 +17,8 @@ WORKDIR /usr/local/bin
 RUN \
     apk --no-cache add python3 \
     && apk --no-cache add py3-pip \
-    && pip3 install chirpstack-api==4.7.0 paho-mqtt --break-system-packages \
+#    && pip3 install chirpstack-api==4.7.0 paho-mqtt --break-system-packages \
+    && pip3 install chirpstack-api paho-mqtt --break-system-packages \
     && apk --no-cache add git redis postgresql postgresql-contrib su-exec \
     && sed -i 's/protected-mode yes/protected-mode no/' /etc/redis.conf \
     && sed -i 's/^\(bind .*\)$/# \1/' /etc/redis.conf \
@@ -26,13 +27,13 @@ RUN \
     && sed -i 's/^\(logfile .*\)$/# \1/' /etc/redis.conf \
     && sed -i 's/loglevel notice/loglevel warning/' /etc/redis.conf \
     && mkdir -p "$PGDATA" && chown -R postgres:postgres "$PGDATA" && chmod 1777 "$PGDATA" \
-    && if [[ "$BUILD_ARCH" = "amd64" ]]; then wget -c https://artifacts.chirpstack.io/downloads/chirpstack/chirpstack_${CHIRPSTACK_VERSION}_linux_amd64.tar.gz -O - | tar -xz;  fi \
+    && if [[ "$BUILD_ARCH" = "amd64" ]]; then wget -c https://artifacts.chirpstack.io/downloads/chirpstack/chirpstack_${CHIRPSTACK_VERSION}_postgres_linux_amd64.tar.gz -O - | tar -xz;  fi \
     && if [[ "$BUILD_ARCH" = "amd64" ]]; then wget -c https://artifacts.chirpstack.io/downloads/chirpstack-gateway-bridge/chirpstack-gateway-bridge_${CHIRPSTACK_GATEWAY_BRIDGE_VERSION}_linux_amd64.tar.gz -O - | tar -xz;  fi \
-    && if [[ "$BUILD_ARCH" = "aarch64" ]]; then wget -c https://artifacts.chirpstack.io/downloads/chirpstack/chirpstack_${CHIRPSTACK_VERSION}_linux_arm64.tar.gz -O - | tar -xz; fi \
+    && if [[ "$BUILD_ARCH" = "aarch64" ]]; then wget -c https://artifacts.chirpstack.io/downloads/chirpstack/chirpstack_${CHIRPSTACK_VERSION}_postgres_linux_arm64.tar.gz -O - | tar -xz; fi \
     && if [[ "$BUILD_ARCH" = "aarch64" ]]; then wget -c https://artifacts.chirpstack.io/downloads/chirpstack-gateway-bridge/chirpstack-gateway-bridge_${CHIRPSTACK_GATEWAY_BRIDGE_VERSION}_linux_arm64.tar.gz -O - | tar -xz; fi \
-    && if [[ "$BUILD_ARCH" = "armhf" ]]; then wget -c https://artifacts.chirpstack.io/downloads/chirpstack/chirpstack_${CHIRPSTACK_VERSION}_linux_armv7hf.tar.gz -O - | tar -xz; fi \
+    && if [[ "$BUILD_ARCH" = "armhf" ]]; then wget -c https://artifacts.chirpstack.io/downloads/chirpstack/chirpstack_${CHIRPSTACK_VERSION}_postgres_linux_armv7hf.tar.gz -O - | tar -xz; fi \
     && if [[ "$BUILD_ARCH" = "armhf" ]]; then wget -c https://artifacts.chirpstack.io/downloads/chirpstack-gateway-bridge/chirpstack-gateway-bridge_${CHIRPSTACK_GATEWAY_BRIDGE_VERSION}_linux_armv7hf.tar.gz -O - | tar -xz; fi \
-    && if [[ "$BUILD_ARCH" = "armv7" ]]; then wget -c https://artifacts.chirpstack.io/downloads/chirpstack/chirpstack_${CHIRPSTACK_VERSION}_linux_armv7hf.tar.gz -O - | tar -xz; fi \
+    && if [[ "$BUILD_ARCH" = "armv7" ]]; then wget -c https://artifacts.chirpstack.io/downloads/chirpstack/chirpstack_${CHIRPSTACK_VERSION}_postgres_linux_armv7hf.tar.gz -O - | tar -xz; fi \
     && if [[ "$BUILD_ARCH" = "armv7" ]]; then wget -c https://artifacts.chirpstack.io/downloads/chirpstack-gateway-bridge/chirpstack-gateway-bridge_${CHIRPSTACK_GATEWAY_BRIDGE_VERSION}_linux_armv7hf.tar.gz -O - | tar -xz; fi
 
 # Build arugments
