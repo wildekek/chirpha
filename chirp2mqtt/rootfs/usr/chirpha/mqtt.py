@@ -371,7 +371,7 @@ class ChirpToHA:
         else:
             subtopics = message.topic.split("/")
             payload = message.payload.decode("utf-8")
-            payload_struct = json.loads(payload) if len(payload) > 0 else None
+            payload_struct = json.loads(payload) if len(payload) > 2 else None
             if payload_struct:
                 time_stamp = payload_struct.get("time_stamp")
                 if subtopics[-1] == "config":
@@ -453,6 +453,12 @@ class ChirpToHA:
                         ret_val = self.publish_value_cache_record(
                             subtopics, "cur", self._values_cache[dev_eui], retain=True
                         )
+            else:
+                _LOGGER.info(
+                    "MQTT ignoring topic %s with payload %s",
+                    message.topic,
+                    message.payload,
+                )
         if (
             len(self._devices_config_topics) > 0
             and self._config_topics_published > 0
