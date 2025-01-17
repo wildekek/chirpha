@@ -3,3 +3,12 @@
 ## 1.1.102
 
 - Initial release
+
+## 1.1.104
+
+- Added MQTT server naming requirements to documentation
+
+## 1.1.105
+
+- Added payload checks
+ 
