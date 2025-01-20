@@ -11,4 +11,7 @@
 ## 1.1.105
 
 - Added payload checks
- 
+
+## 1.1.106
+
+- Fixed MQTT server IP naming in region description file
