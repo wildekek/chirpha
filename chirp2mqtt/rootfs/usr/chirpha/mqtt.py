@@ -580,6 +580,8 @@ class ChirpToHA:
             discovery_config["state_topic"] = status_topic
         elif discovery_config.get("state_topic") == "{None}":
             del discovery_config["state_topic"]
+        if discovery_config.get("value_template") == "{None}":
+            del discovery_config["value_template"]
         discovery_config["name"] = (
             dev_conf["measurement_names"][dev_id]
             if dev_conf["measurement_names"].get(dev_id)
