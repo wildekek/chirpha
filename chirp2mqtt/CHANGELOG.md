@@ -15,3 +15,7 @@
 ## 1.1.106
 
 - Fixed MQTT server IP naming in region description file
+
+## 1.1.107
+
+- Upgrade to ghcr.io/hassio-addons/base:17.1.0, CHIRPSTACK_VERSION: 4.11.0

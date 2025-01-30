@@ -601,8 +601,10 @@ class ChirpToHA:
             discovery_config["payload_off"] = discovery_config["payload_off"].format(
                 dev_eui=dev_conf["dev_eui"]
             )
-        if discovery_config.get("command_topic") == "{command_topic}":
-            discovery_config["command_topic"] = comand_topic
+        discovery_config_enum = discovery_config.copy()
+        for key, value in discovery_config_enum.items():
+            if value == "{command_topic}": discovery_config[key] = comand_topic
+            if value == "{status_topic}": discovery_config[key] = status_topic
         discovery_config["enabled_by_default"] = True
         discovery_config["time_stamp"] = self._bridge_init_time
         return {
