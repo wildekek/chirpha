@@ -591,21 +591,24 @@ class ChirpToHA:
             discovery_config["object_id"] = to_lower_case_no_blanks(
                 dev_conf["dev_eui"] + "_" + dev_id
             )
-        if discovery_config.get("payload_on"):
-            discovery_config["payload_on"] = discovery_config["payload_on"].format(
-                dev_eui=dev_conf["dev_eui"]
-            )
-        if discovery_config.get("payload_off"):
-            discovery_config["payload_off"] = discovery_config["payload_off"].format(
-                dev_eui=dev_conf["dev_eui"]
-            )
         discovery_config_enum = discovery_config.copy()
         for key, value in discovery_config_enum.items():
-            if value == "{None}": del discovery_config[key]
-            if value == "{command_topic}": discovery_config[key] = comand_topic
-            if value == "{status_topic}": discovery_config[key] = status_topic
+            if value == "{None}":
+                del discovery_config[key]
+            if value == "{command_topic}":
+                discovery_config[key] = comand_topic
+            if value == "{status_topic}":
+                discovery_config[key] = status_topic
+            if "{dev_eui}" in value:
+                discovery_config[key] = discovery_config[key].format( dev_eui=dev_conf["dev_eui"] )
         discovery_config["enabled_by_default"] = True
         discovery_config["time_stamp"] = self._bridge_init_time
+        _LOGGER.info(
+            "discovery_config %s, status_topic %s comand_topic %s",
+            json.dumps(discovery_config),
+            status_topic,
+            comand_topic,
+        )
         return {
             "discovery_config_struct": discovery_config,
             "discovery_config": json.dumps(discovery_config),

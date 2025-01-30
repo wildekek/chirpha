@@ -24,7 +24,7 @@ def test_with_devices_disabled():
 
 
 def test_codec_prologue_issues():
-    """Test codec with issues in prologue, no ddevices to be installed."""
+    """Test codec with issues in prologue, no devices to be installed."""
 
     def run_test_codec_prologue_issues(config):
         set_size(devices=1, codec=11)  # function name missing
