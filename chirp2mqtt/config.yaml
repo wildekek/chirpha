@@ -26,7 +26,7 @@ map:
   - share:rw
 init: false
 options:
-  application_id: "72a56954-700f-4a52-90d2-86cf76df5c57"
+  application_id: ""
   mqtt_user: "loramqtt"
   mqtt_password: "ploramqtt"
   discovery_prefix: "homeassistant"

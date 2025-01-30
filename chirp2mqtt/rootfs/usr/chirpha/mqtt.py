@@ -578,10 +578,6 @@ class ChirpToHA:
         discovery_config["origin"] = self._origin
         if not discovery_config.get("state_topic"):
             discovery_config["state_topic"] = status_topic
-        elif discovery_config.get("state_topic") == "{None}":
-            del discovery_config["state_topic"]
-        if discovery_config.get("value_template") == "{None}":
-            del discovery_config["value_template"]
         discovery_config["name"] = (
             dev_conf["measurement_names"][dev_id]
             if dev_conf["measurement_names"].get(dev_id)
@@ -605,6 +601,7 @@ class ChirpToHA:
             )
         discovery_config_enum = discovery_config.copy()
         for key, value in discovery_config_enum.items():
+            if value == "{None}": del discovery_config[key]
             if value == "{command_topic}": discovery_config[key] = comand_topic
             if value == "{status_topic}": discovery_config[key] = status_topic
         discovery_config["enabled_by_default"] = True

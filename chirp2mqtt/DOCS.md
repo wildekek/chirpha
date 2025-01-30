@@ -180,6 +180,7 @@ Entities (sensors) structure contains
 - entity name; name must match one used in decode function that is defined above and is supplied by device vendor;
 - integration and entity_conf is defined on the next level of structure;
 - integration and entity_conf is defined on the next level of structure;
-- integration sets MQTT integration name, this must be one of "humidifier", "binary_sensor", "sensor"; if device class is set in it may allow to automatically select integration;
+- integration sets MQTT component integration name, this could be name of one of MQTT components, default is "sensor"; if device class is set in it may allow to automatically select integration;
 - entity_conf defines fields that control device sensor appearance in MQTT integration; value_template describes how to extract sensor value from payload, default is value_template: "{{ value_json.entity_name }}". Usually value need to be converted to specific type (int, float).
+There are 3 special values description structure returned by getHaDeviceInfo: "{None}", "{status_topic}", "{command_topic}". Keys with value "{None}" are deleted during processing; "{status_topic}" replaced with ChirpStack's status topic name; "{command_topic}" replaced with ChirpStack's command topic name.
 
