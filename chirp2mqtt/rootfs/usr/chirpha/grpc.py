@@ -145,7 +145,6 @@ class ChirpGrpc:
             discovery = None
             try:
                 discovery = self.js_interpreter.evaljs(profile.device_profile.payload_codec_script+"; JSON.stringify(getHaDeviceInfo())")
-                print("CODEC0 ", discovery)
             except Exception as error:  # pylint: disable=broad-exception-caught
                 _LOGGER.debug(
                     "Profile %s discovery codec script error '%s', source code '%s' converted to json '%s'",

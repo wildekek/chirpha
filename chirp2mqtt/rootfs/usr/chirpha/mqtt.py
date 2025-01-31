@@ -593,6 +593,8 @@ class ChirpToHA:
             )
         discovery_config_enum = discovery_config.copy()
         for key, value in discovery_config_enum.items():
+            if not isinstance(value, str):
+                continue
             if value == "{None}":
                 del discovery_config[key]
             if value == "{command_topic}":
@@ -603,12 +605,6 @@ class ChirpToHA:
                 discovery_config[key] = value.replace( "{dev_eui}", dev_conf["dev_eui"] )
         discovery_config["enabled_by_default"] = True
         discovery_config["time_stamp"] = self._bridge_init_time
-        _LOGGER.info(
-            "discovery_config %s, status_topic %s comand_topic %s",
-            json.dumps(discovery_config),
-            status_topic,
-            comand_topic,
-        )
         return {
             "discovery_config_struct": discovery_config,
             "discovery_config": json.dumps(discovery_config),
@@ -619,5 +615,4 @@ class ChirpToHA:
 
     def close(self):
         """Close recent session."""
-        #self._client.loop_stop()
         self._client.disconnect()
