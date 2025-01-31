@@ -19,3 +19,11 @@
 ## 1.1.107
 
 - Upgrade to ghcr.io/hassio-addons/base:17.1.0, CHIRPSTACK_VERSION: 4.11.0
+
+## 1.1.112
+
+- Code extended to support MQTT component integrations
+
+## 1.1.113
+
+- Replaced custom js evaluator with dukpy package

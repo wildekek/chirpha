@@ -42,23 +42,23 @@ CODEC = [
     ),
     (   #6
         1,
-        'function getHaDeviceInfo() {return {device: {manufacturer: "vendor0",model: "model1",},entities: {counter:{entity_conf: {device_class: "gas",state_class: "total_increasing",unit_of_measurement: "m³"}},}}}};}',
+        'function getHaDeviceInfo() {return {device: {manufacturer: "vendor0",model: "model1",},entities: {counter:{entity_conf: {device_class: "gas",state_class: "total_increasing",unit_of_measurement: "m³"}},}};}',
     ),
     (   #7
         1,
-        'function getHaDeviceInfo() {return {device: {manufacturer: "vendor0",model: "model1",},entities: {counter:{integration:"sensor",entity_conf: {value_template: "{{ value_json.object.counter }}",device_class: "gas",state_class: "total_increasing",unit_of_measurement: "m³"}},}}}};}',
+        'function getHaDeviceInfo() {return {device: {manufacturer: "vendor0",model: "model1",},entities: {counter:{integration:"sensor",entity_conf: {value_template: "{{ value_json.object.counter }}",device_class: "gas",state_class: "total_increasing",unit_of_measurement: "m³"}},}};}',
     ),
     (   #8
         1,
-        'function getHaDeviceInfo() {return {device: {manufacturer: "vendor0",model: "model1",},entities: {counter:{entity_conf: {value_template: "{{ value_json.object.counter }}",state_class: "total_increasing",unit_of_measurement: "m³"}},}}}};}',
+        'function getHaDeviceInfo() {return {device: {manufacturer: "vendor0",model: "model1",},entities: {counter:{entity_conf: {value_template: "{{ value_json.object.counter }}",state_class: "total_increasing",unit_of_measurement: "m³"}},}};}',
     ),
     (   #9
         1,
-        'function getHaDeviceInfo() {return {device: {manufacturer: "vendor0",model: "model1",},entities: {counter:{entity_conf: {value_template: "{{ value_json.object.counter }}",device_class: "gas001",state_class: "total_increasing",unit_of_measurement: "m³"}},}}}};}',
+        'function getHaDeviceInfo() {return {device: {manufacturer: "vendor0",model: "model1",},entities: {counter:{entity_conf: {value_template: "{{ value_json.object.counter }}",device_class: "gas001",state_class: "total_increasing",unit_of_measurement: "m³"}},}};}',
     ),
     (   #10
         1,
-        'function getHaDeviceInfo() {return {device: {manufacturer: "vendor0",model: "model1",},entities: {counter:{entity_conf: {value_template: "{{ value_json.object.counter }}",device_class: "gas001",state_class: "total_increasing",command_topic:"{command_topic}",unit_of_measurement: "m³"}},}}}};}',
+        'function getHaDeviceInfo() {return {device: {manufacturer: "vendor0",model: "model1",},entities: {counter:{entity_conf: {value_template: "{{ value_json.object.counter }}",device_class: "gas001",state_class: "total_increasing",command_topic:"{command_topic}",unit_of_measurement: "m³"}},}};}',
     ),
     (0, 'function getHaDeviceInf() {return {device:,""}}'), #11
     (0, 'function getHaDeviceInfo() {retur {device:,""}}'), #12
@@ -69,11 +69,70 @@ CODEC = [
     ),
     (   #15
         1,
-        'function getHaDeviceInfo() {return {device: {manufacturer: "vendor0",model: "model1",},entities: {counter:{entity_conf: {value_template: "{{ value_json.object.counter }}",device_class: "humidifier",state_class: "total_increasing",unit_of_measurement: "m³"}},}}}};}',
+        'function getHaDeviceInfo() {return {device: {manufacturer: "vendor0",model: "model1",},entities: {counter:{entity_conf: {value_template: \"{{ value_json.object.counter }}\",device_class: "humidifier",state_class: "total_increasing",unit_of_measurement: "m³"}},}};}',
     ),
     (   #16
         1,
-        "function getHaDeviceInfo() {return {device: {manufacturer: 'vendor0',model: '\"model1',},entities: {counter:{entity_conf: {value_template: '{{ value_json.object.counter }}'}},}}}};}",
+        "function getHaDeviceInfo() {return {device: {manufacturer: 'vendor0',model: \"model1\",},entities: {counter:{entity_conf: {value_template: '{{ value_json.object.counter }}'}},}};}",
+    ),
+    (   #17
+        1,
+        "        function getHaDeviceInfo() {\
+        return {\
+            device: {\
+            manufacturer: 'Milesight IoT Co., Ltd',\
+            model: 'WT101'\
+            },\
+            entities: {\
+            teststate: {\
+                integration: 'climate',\
+                entity_conf: {\
+                modes: ['auto', 'heat', 'off'],\
+                mode_state_topic: '{status_topic}',\
+                mode_state_template: '{% if (value_json.object.motor_position | int) == 0 %} offx {% else %} heatx {% endif %}',\
+                current_temperature_topic: '{status_topic}',\
+                current_temperature_template: '{{ (value_json.object.temperature | float) }}',\
+                temperature_command_topic: '{command_topic}',\
+                temperature_command_template: '{ \"devEui\": \"{dev_eui}\", \"confirmed\": true, \"fPort\": 85, \"object\": { \"temperature_target\": {{ value | float }},\"temperature_error\": 0.1 } }',\
+                min_temp: 6,\
+                max_temp: 30,\
+                temp_step: 0.1\
+                }\
+            }\
+            }\
+        };\
+        }\
+        ",
+    ),
+    (   #18
+        1,
+        "\
+        function getHaDeviceInfo() {\
+        return {\
+            device: {\
+            manufacturer: 'Milesight IoT Co., Ltd',\
+            model: 'WT101'\
+            },\
+            entities: {\
+            teststate: {\
+                integration: 'climate',\
+                entity_conf: {\
+                modes: \"['auto', 'heat', 'off']\",\
+                mode_state_topic: '{status_topic}',\
+                mode_state_template: '{% if (value_json.object.motor_position | int) == 0 %} offx {% else %} heatx {% endif %}',\
+                current_temperature_topic: '{status_topic}',\
+                current_temperature_template: '{{ (value_json.object.temperature | float) }}',\
+                temperature_command_topic: '{command_topic}',\
+                temperature_command_template: '{ \"devEui\": \"{dev_eui}\", \"confirmed\": true, \"fPort\": 85, \"object\": { \"temperature_target\": {{ value | float }},\"temperature_error\": 0.1 } }',\
+                min_temp: '6',\
+                max_temp: '30',\
+                temp_step: '0.1'\
+                }\
+            }\
+            }\
+        };\
+        }\
+        ",
     ),
 ]
 

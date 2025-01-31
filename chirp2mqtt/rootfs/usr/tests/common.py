@@ -55,7 +55,6 @@ def chirp_setup_and_run_test(run_test_case, conf_file=REGULAR_CONFIGURATION_FILE
     config = config | INTERNAL_CONFIG
 
     set_size(**test_params)
-    print("common ", get_size("publish"))
     with patch("chirpha.start.CONFIGURATION_FILE", new=full_path_to_conf_file):
         with run_chirp_ha() as ch:
             time.sleep(0.01)

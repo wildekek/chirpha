@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import logging
 import subprocess
+import dukpy
 
 from chirpstack_api import api
 import grpc
@@ -60,6 +61,7 @@ class ChirpGrpc:
                 break
             _LOGGER.warning("%s is not valid application ID, using %s (tenant %s, application %s)", self._application_id, application_id, tenant, application)
             self._application_id = application_id
+        self.js_interpreter = dukpy.JSInterpreter()
         _LOGGER.info("ChirpStack application ID %s", self._application_id)
 
     def get_chirp_tenants(self):
@@ -140,10 +142,25 @@ class ChirpGrpc:
             if self.isDeviceDisbled(device.dev_eui):
                 continue
             profile = self.get_chirp_device_profile(device.device_profile_id)
-            discovery_json = get_ha_descriptor(
-                profile.device_profile.payload_codec_script
-            )
-            discovery = discovery_json[0]
+            discovery = None
+            try:
+                discovery = self.js_interpreter.evaljs(profile.device_profile.payload_codec_script+"; JSON.stringify(getHaDeviceInfo())")
+                print("CODEC0 ", discovery)
+            except Exception as error:  # pylint: disable=broad-exception-caught
+                _LOGGER.debug(
+                    "Profile %s discovery codec script error '%s', source code '%s' converted to json '%s'",
+                    profile.device_profile.name,
+                    str(error),
+                    profile.device_profile.payload_codec_script,
+                    discovery,
+                )
+                discovery = None
+            #print("CODEC+", profile.device_profile.name, discovery)   ###########################
+            #discovery_json = get_ha_descriptor(
+            #    profile.device_profile.payload_codec_script
+            #)
+            #print("CODEC ", profile.device_profile.name, discovery_json[0])   ###########################
+            #discovery = discovery_json[0]
             if discovery:
                 try:
                     discovery = json.loads(discovery)
@@ -152,8 +169,8 @@ class ChirpGrpc:
                         "Profile %s discovery codec script error '%s', source code '%s' converted to json '%s'",
                         profile.device_profile.name,
                         str(error),
-                        discovery_json[1],
-                        discovery_json[0],
+                        profile.device_profile.payload_codec_script,
+                        discovery,
                     )
                     discovery = None
             if not discovery:
