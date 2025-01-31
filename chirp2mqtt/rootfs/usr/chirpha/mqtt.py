@@ -536,7 +536,7 @@ class ChirpToHA:
             mqtt_integration = None
             device_class = sensor["entity_conf"].get("device_class")
             if device_class:
-                for integration in self._classes:
+                for integration in self._classes["integrations"]:
                     if device_class in self._classes.get(integration):
                         mqtt_integration = integration
                         break
