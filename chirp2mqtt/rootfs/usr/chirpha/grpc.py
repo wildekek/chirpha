@@ -5,6 +5,7 @@ import json
 import logging
 import subprocess
 import dukpy
+import re
 
 from chirpstack_api import api
 import grpc
@@ -144,13 +145,16 @@ class ChirpGrpc:
             profile = self.get_chirp_device_profile(device.device_profile_id)
             discovery = None
             try:
-                discovery = self.js_interpreter.evaljs(profile.device_profile.payload_codec_script+"; JSON.stringify(getHaDeviceInfo())")
+                mi_start = re.search(r"function\s+getHaDeviceInfo", profile.device_profile.payload_codec_script)
+                if mi_start:
+                    i_start = mi_start.start()
+                    discovery = self.js_interpreter.evaljs(profile.device_profile.payload_codec_script[i_start:]+"; JSON.stringify(getHaDeviceInfo())")
             except Exception as error:  # pylint: disable=broad-exception-caught
-                _LOGGER.debug(
+                _LOGGER.error(
                     "Profile %s discovery codec script error '%s', source code '%s' converted to json '%s'",
                     profile.device_profile.name,
                     str(error),
-                    profile.device_profile.payload_codec_script,
+                    profile.device_profile.payload_codec_script[i_start:],
                     discovery,
                 )
                 discovery = None
