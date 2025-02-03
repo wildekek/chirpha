@@ -1,17 +1,14 @@
 """Test the Wan integration gRPC interface class."""
 
 from tests import common
-import time
 
-from .patches import get_size, mqtt, set_size
-from tests.common import (REGULAR_CONFIGURATION_FILE, PAYLOAD_PRINT_CONFIGURATION_FILE, NO_APP_CONFIGURATION_FILE)
+from .patches import get_size, mqtt
+from chirpha.const import BRIDGE_CONF_COUNT, CONF_APPLICATION_ID
 
 def test_codec_prologue_noissues():
     """Test codec with issues in prologue, no devices to be installed."""
 
     def run_test_codec_prologue_noissues(config):
-        #set_size(devices=1, codec=17)  # function name missing
-        #common.reload_devices(config)
         assert get_size("idevices") == mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).stat_devices  ### device count check
         assert get_size("sensors") == mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).stat_sensors * get_size("idevices")  ### sensor count check
 
@@ -22,9 +19,20 @@ def test_codec_prologue_issues():
     """Test codec with issues in prologue, no devices to be installed."""
 
     def run_test_codec_prologue_issues(config):
-        #set_size(devices=1, codec=18)  # function name missing
-        #common.reload_devices(config)
         assert get_size("idevices") == mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).stat_devices  ### device count check
         assert get_size("sensors") == mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).stat_sensors * get_size("idevices")  ### sensor count check
 
     common.chirp_setup_and_run_test(run_test_codec_prologue_issues, test_params=dict(devices=1, codec=18))
+
+def test_empty_message():
+    """Test empty message procesing."""
+
+    def run_test_empty_message(config):
+        dev_eui = "dev_eui0"
+        topic = f"application/{config.get(CONF_APPLICATION_ID)}/device/{dev_eui}/event/up"
+        msg = b''
+        mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).publish(topic, msg)
+        empty_msg_count = common.count_messages(topic, None, keep_history=True)
+        assert empty_msg_count == 1
+
+    common.chirp_setup_and_run_test(run_test_empty_message)

@@ -115,6 +115,7 @@ class ChirpToHA:
         self._top_level_msg_names = None
         self._values_cache = {}
         self._config_topics_published = 0
+        self._bridge_config_topics_published = -1
         self._bridge_state_topic = f"application/{self._application_id}/bridge/status"
         self._bridge_restart_topic = (
             f"application/{self._application_id}/bridge/restart"
@@ -154,7 +155,6 @@ class ChirpToHA:
 
     def start_bridge(self):
         """Start Lora bridge registration within HA MQTT."""
-        #print("start_bridge entered")
         #traceback.print_stack(file=sys.stdout)
         bridge_publish_data = self.get_conf_data(
             BRIDGE_STATE_ID,
@@ -201,6 +201,7 @@ class ChirpToHA:
                 "Bridge device configuration published. MQTT payload %s",
                 bridge_publish_data["discovery_config"],
             )
+        self._bridge_config_topics_published = 1
 
         bridge_refresh_data = self.get_conf_data(
             BRIDGE_RESTART_ID,
@@ -236,6 +237,7 @@ class ChirpToHA:
             bridge_refresh_data["discovery_config"],
             retain=True,
         )
+        self._bridge_config_topics_published += 1
 
         device_sensors = self._grpc_client.get_current_device_entities()
 
@@ -260,9 +262,12 @@ class ChirpToHA:
                     device["device"],
                     device["dev_conf"],
                 )
-                value_templates.append(
-                    sensor_entity_conf_data["discovery_config_struct"]["value_template"]
-                )
+                #value_templates.append(
+                #    sensor_entity_conf_data["discovery_config_struct"]["value_template"]
+                #)
+                for conf_key in sensor_entity_conf_data["discovery_config_struct"].keys():
+                    if conf_key.endswith("_template"):
+                        value_templates.append(sensor_entity_conf_data["discovery_config_struct"][conf_key])
                 devices_config_topics.add(sensor_entity_conf_data["discovery_topic"])
                 ret_val = self._client.publish(
                     sensor_entity_conf_data["discovery_topic"],
@@ -368,6 +373,14 @@ class ChirpToHA:
                 message.retain,
             )
             self.start_bridge()
+        elif message.topic == self._ha_status:
+            payload = message.payload.decode("utf-8")
+            if payload == "online":
+                _LOGGER.info(
+                    "HA online, starting devices registration.%s",
+                    message.retain,
+                )
+                self.start_bridge()
         else:
             subtopics = message.topic.split("/")
             payload = message.payload.decode("utf-8")
@@ -393,6 +406,8 @@ class ChirpToHA:
                         ):
                             self._config_topics_published += 1
                             # _LOGGER.error("Counter increased to %s", self._config_topics_published)
+                    else:
+                        self._bridge_config_topics_published -= 1
                 elif subtopics[-1] == "cur":
                     dev_eui = subtopics[-3]
                     _LOGGER.info("MQTT cached values received topic %s", message.topic)
@@ -471,14 +486,16 @@ class ChirpToHA:
                 len(self._old_devices_config_topics - self._devices_config_topics),
             )
             self.clean_up_disappeared()
+        if self._bridge_config_topics_published == 0:
             ret_val = self._client.publish(
-                self._bridge_state_topic, '{"state": "online"}', retain=True
+                self._bridge_state_topic, '{"state": "online"}'
             )
             _LOGGER.info(
                 "Bridge state turned on. MQTT topic %s, publish code %s",
                 self._bridge_state_topic,
                 ret_val,
             )
+            self._bridge_config_topics_published = -1
 
     def publish_value_cache_record(
         self, topic_array, topic_suffix, payload_struct, retain=False
@@ -542,12 +559,12 @@ class ChirpToHA:
                         break
                 if not mqtt_integration:
                     mqtt_integration = "sensor"
-                    _LOGGER.warning(
-                        "Could not detect integration by device class %s for dev_eui %s/%s, set to 'sensor'",
+                    _LOGGER.error(
+                        "Could not detect integration by device class %s for dev_eui %s, integration set to 'sensor', device class removed",
                         device_class,
                         dev_conf["dev_eui"],
-                        id,
                     )
+                    del sensor["entity_conf"]["device_class"]
             else:
                 mqtt_integration = "sensor"
                 _LOGGER.warning(

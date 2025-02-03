@@ -144,26 +144,24 @@ class ChirpGrpc:
                 continue
             profile = self.get_chirp_device_profile(device.device_profile_id)
             discovery = None
+            codec_code = None
+            codec_json = None
             try:
                 mi_start = re.search(r"function\s+getHaDeviceInfo", profile.device_profile.payload_codec_script)
                 if mi_start:
                     i_start = mi_start.start()
-                    discovery = self.js_interpreter.evaljs(profile.device_profile.payload_codec_script[i_start:]+"; JSON.stringify(getHaDeviceInfo())")
+                    codec_code = profile.device_profile.payload_codec_script[i_start:]
+                    discovery = self.js_interpreter.evaljs(codec_code+"; JSON.stringify(getHaDeviceInfo())")
+                    codec_json = discovery
             except Exception as error:  # pylint: disable=broad-exception-caught
                 _LOGGER.error(
                     "Profile %s discovery codec script error '%s', source code '%s' converted to json '%s'",
                     profile.device_profile.name,
                     str(error),
-                    profile.device_profile.payload_codec_script[i_start:],
-                    discovery,
+                    codec_code,
+                    codec_json,
                 )
                 discovery = None
-            #print("CODEC+", profile.device_profile.name, discovery)   ###########################
-            #discovery_json = get_ha_descriptor(
-            #    profile.device_profile.payload_codec_script
-            #)
-            #print("CODEC ", profile.device_profile.name, discovery_json[0])   ###########################
-            #discovery = discovery_json[0]
             if discovery:
                 try:
                     discovery = json.loads(discovery)
@@ -172,13 +170,14 @@ class ChirpGrpc:
                         "Profile %s discovery codec script error '%s', source code '%s' converted to json '%s'",
                         profile.device_profile.name,
                         str(error),
-                        profile.device_profile.payload_codec_script,
+                        codec_code,
                         discovery,
                     )
                     discovery = None
             if not discovery:
                 _LOGGER.error(
-                    "Discovery codec missing or faulty for device %s with profile %s, device ignored",
+                    "Discovery codec (%s->%s) missing or faulty for device %s with profile %s, device ignored",
+                    codec_code, codec_json,
                     device.name,
                     profile.device_profile.name,
                 )
@@ -210,88 +209,3 @@ class ChirpGrpc:
             }
             devices_list.append(discovery)
         return devices_list
-
-
-def get_ha_descriptor(js_script):
-    """Convert restricted javascript function getHaDeviceInfo code to python dictionary/array structure."""
-    i_start = js_script.find("getHaDeviceInfo")
-    if i_start >= 0:
-        i_start = js_script.find("return", i_start)
-    if i_start >= 0:
-        i_start = js_script.find("{", i_start)
-    if i_start < 0:
-        return (None, js_script)
-    open_curl = 0
-    is_string = False
-    is_name = False
-    is_1st_slash = False
-    is_comment = False
-    json_out = ""
-    quote = '"'
-    getHaDeviceInfoSource = js_script[i_start:]
-    for char in getHaDeviceInfoSource:
-        if char == "\n":
-            is_comment = False
-            continue
-        if is_comment:
-            continue
-        if not is_string:
-            if char == "/":
-                if not is_1st_slash:
-                    is_1st_slash = True
-                    continue
-                is_1st_slash = False
-                is_comment = True
-                continue
-            if is_1st_slash:
-                is_1st_slash = False
-                json_out += "/"
-            if char == " ":
-                continue
-            if char == "{":
-                open_curl += 1
-                json_out += char
-                json_out += '"'
-                is_name = True
-                continue
-            if char == "}":
-                open_curl -= 1
-                if is_name:
-                    json_out += '"'
-                    is_name = False
-                json_out += char
-                if open_curl <= 0:
-                    break
-                continue
-            if char == ":":
-                if is_name:
-                    json_out += '"'
-                    is_name = False
-                json_out += char
-                continue
-            if char == '"':
-                json_out += char
-                is_string = True
-                quote = char
-                continue
-            if char == "'":
-                json_out += '"'
-                is_string = True
-                quote = char
-                continue
-            if char == ",":
-                json_out += char
-                json_out += '"'
-                is_name = True
-                continue
-            is_name = char != ","
-            json_out += char
-        elif char == quote:
-            is_string = False
-            json_out += '"'
-        else:
-            if quote != '"' and char == '"':
-                json_out += "\\"
-            json_out += char
-    json_out = json_out.replace(',""', "")
-    return (json_out, getHaDeviceInfoSource)

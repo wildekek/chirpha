@@ -54,7 +54,7 @@ configuration:
   options_debug_print_payload:
     name: Print Payload
     description: >-
-      Enable/disable additional debug printouts: if enabled include messsage payload
+      Enable/disable additional debug printouts: if enabled logs include messsage payload
 network:
   8080/tcp: ChirpStack server WEB UI port
   1700/udp: Port to receive LoraWAN packets

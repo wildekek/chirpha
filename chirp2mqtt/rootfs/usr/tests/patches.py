@@ -1,4 +1,4 @@
-"""Mocks for ChirpStack grpc api, paho mqtt."""
+"""Mocks for ChirpStack grpc api, paho mqtt, dukpy."""
 import json
 import time
 import threading
@@ -18,7 +18,7 @@ MODEL_SIZES = [
         "codec": 1,
     }
 ]
-CODEC = [
+CODEC = [   # array of (no_of_sensors, "codec_code")
     (   #0
         4,
         'function getHaDeviceInfo() {return {device: {manufacturer: "vendor0",model: "model1",},entities: {sensor{dev_no}:{entity_conf: {device_class: "gas"}},battery:{entity_conf: {value_template: "{{ batteryLevel }}",entity_category: "diagnostic",device_class: "battery",unit_of_measurement: "%",}},rssi:{entity_conf: {value_template: "{{ value_json.rxInfo[-1].rssi | int }}",entity_category: "diagnostic",device_class: "signal_strength",}},altitude:{entity_conf:{value_template: "{{ value_json.rxInfo[-1].location.altitude | int }}"}}}};}',
@@ -38,7 +38,7 @@ CODEC = [
     ),
     (   #5
         2,
-        'function getHaDeviceInfo() {return {device: {manufacturer: "vendor0",model: "model1",},entities: {counter:{entity_conf: {value_template: "{{ value_json.object.counter }}",device_class: "gas",state_class: "total_increasing",unit_of_measurement: "m³"}},battery:{data_event: "status",entity_conf: {value_template: "{{ value_json.batteryLevel}}",entity_category: "diagnostic",device_class: "battery",unit_of_measurement: "%",}}}};}',
+        'function getHaDeviceInfo() {return {device: {manufacturer: "vendor0",model: "model1",},entities: {counter:{entity_conf: {value_template: "{{ value_json.object.counter[0] }}",device_class: "gas",state_class: "total_increasing",unit_of_measurement: "m³"}},battery:{data_event: "status",entity_conf: {value_template: "{{ value_json.batteryLevel[-1]}}",entity_category: "diagnostic",device_class: "battery",unit_of_measurement: "%",}}}};}',
     ),
     (   #6
         1,
@@ -46,7 +46,7 @@ CODEC = [
     ),
     (   #7
         1,
-        'function getHaDeviceInfo() {return {device: {manufacturer: "vendor0",model: "model1",},entities: {counter:{integration:"sensor",entity_conf: {value_template: "{{ value_json.object.counter }}",device_class: "gas",state_class: "total_increasing",unit_of_measurement: "m³"}},}};}',
+        'function getHaDeviceInfo() {return {device: {manufacturer: "vendor0",model: "model1",},entities: {counter:{integration:"climate",entity_conf: {value_template: "{{ value_json.object.counter }}",device_class: "gas",state_class: "total_increasing",unit_of_measurement: "m³"}},}};}',
     ),
     (   #8
         1,
@@ -58,7 +58,7 @@ CODEC = [
     ),
     (   #10
         1,
-        'function getHaDeviceInfo() {return {device: {manufacturer: "vendor0",model: "model1",},entities: {counter:{entity_conf: {value_template: "{{ value_json.object.counter }}",device_class: "gas001",state_class: "total_increasing",command_topic:"{command_topic}",unit_of_measurement: "m³"}},}};}',
+        'function getHaDeviceInfo() {return {device: {manufacturer: "vendor0",model: "model1",},entities: {counter:{entity_conf: {value_template: "{{ value_json.object.counter }}",device_class: "gas",state_class: "total_increasing",command_topic:"{command_topic}",unit_of_measurement: "m³"}},}};}',
     ),
     (0, 'function getHaDeviceInf() {return {device:,""}}'), #11
     (0, 'function getHaDeviceInfo() {retur {device:,""}}'), #12
@@ -84,7 +84,7 @@ CODEC = [
             model: 'WT101'\
             },\
             entities: {\
-            teststate: {\
+            counter: {\
                 integration: 'climate',\
                 entity_conf: {\
                 modes: ['auto', 'heat', 'off'],\
@@ -114,9 +114,11 @@ CODEC = [
             model: 'WT101'\
             },\
             entities: {\
-            teststate: {\
+            counter: {\
                 integration: 'climate',\
                 entity_conf: {\
+                value_template: '{None}',\
+                status_topic: '{None}',\
                 modes: \"['auto', 'heat', 'off']\",\
                 mode_state_topic: '{status_topic}',\
                 mode_state_template: '{% if (value_json.object.motor_position | int) == 0 %} offx {% else %} heatx {% endif %}',\
@@ -134,6 +136,11 @@ CODEC = [
         }\
         ",
     ),
+    (   #19
+        0,
+        'function getHaDeviceInfo() {return {device: {manufacturer: "vendor0",model: \'model1\',},// \nentities: {counter:{entity_conf: {value_template: "{{ value_json.object.counter }}",device_class: "gas",state_class: "total_increasing",unit_of_measurement: "m³"}}}};}',
+    ),
+
 ]
 
 
@@ -239,9 +246,6 @@ class mqtt:
             """Mock publish function, raise exception if requested."""
             self._publish_queue.put((topic, payload, qos, retain))
             self._publish_count += 1
-            #print("publish ", self._publish_count, self._publish_queue.qsize(), topic, payload)
-            #if topic=="application/ApplicationId0x/bridge/status":
-            #    traceback.print_stack(file=sys.stdout)
             self._published.append((topic, payload, qos, retain))
             return (0, self._publish_count)
 
@@ -251,18 +255,15 @@ class mqtt:
 
         def loop_forever(self):
             """Mock loop_forever function."""
-            #print("--------------------------------")
             thread = threading.Thread(target=self._loop_forever)
             thread.start()
             thread.join()
             if not get_size("publish") and self._publish_count > 0:
                 raise Exception("MQTT request processing error") # pylint: disable=broad-exception-raised
             self._processing_done.set()
-            #print("------------join----------------")
 
         def _loop_forever(self):
             """Mock loop_forever function."""
-            #print("------+++++++++-----------------")
             while True:
                 msg = self._publish_queue.get()
                 self._processing_done.clear()
@@ -272,16 +273,12 @@ class mqtt:
                     break
                 sub_topics = msg[0].split("/")
                 if sub_topics[-1] == "restart" or (sub_topics[0] != "application" and sub_topics[-1] == "status"):
-                    #print("reset counter requested")
                     self.reset_stats()
                 if msg[1] != None and sub_topics[-1] in self._subscribed:
-                #if sub_topics[-1] in self._subscribed:
                     self.on_message(self, None, message(msg[0], msg[1], msg[2], msg[3]))
                 if sub_topics[-1] == "config" and len(sub_topics[2]) < 32:
                     payload_struct = json.loads(msg[1]) if msg[1] and len(msg[1]) > 0 else None
                     if payload_struct:
-                        #print("counting +++", msg[0], payload_struct.get("time_stamp"))
-                        #print("counting +++")
                         if self._stat_start_time != payload_struct["time_stamp"]:
                             self._stat_start_time = payload_struct["time_stamp"]
                             self.stat_devices = 0
@@ -291,9 +288,7 @@ class mqtt:
                         if self._stat_dev_eui != sub_topics[2]:
                             self._stat_dev_eui = sub_topics[2]
                             self.stat_devices += 1
-                #print("counting +++", self.stat_devices, self.stat_sensors)
                 self._processing_done.set()
-            #print("------+++++++++exit--------------")
             return 0
 
         def subscribe(self, topic):
@@ -312,8 +307,6 @@ class mqtt:
 
         def disconnect(self):
             """Mock disconnect function."""
-            #print("Disconect ------", self._publish_queue.maxsize, self._publish_queue.qsize(), self._connected)
-            #traceback.print_stack(file=sys.stdout)
             if self._connected:
                 self._connected = False
                 self._publish_queue.put((None, None, None, None))
@@ -321,10 +314,11 @@ class mqtt:
             return 0
 
         # for testing only
-        def get_published(self):
+        def get_published(self, keep_history=False):
             """Implement published message retrieval and buffer cleanup."""
             current = self._published
-            self._published = []
+            if not keep_history:
+                self._published = []
             return current
 
         def close(self):
@@ -332,7 +326,6 @@ class mqtt:
 
         def reset_stats(self):
             """Reset device/sensor counters - test extension."""
-            #print("reset counters")
             self._stat_start_time = None
             self.stat_devices = 0
             self.stat_sensors = 0
@@ -342,7 +335,6 @@ class mqtt:
             """Blocks till loop_forever is executed - test extension."""
             if self._connected:
                 while True:
-                    #print("wait_empty_queue ", self._processing_done.is_set(), self._publish_queue.qsize(), self._connected)
                     if not self._connected: break
                     if self._publish_queue.empty():
                         if self._connected:
@@ -591,7 +583,6 @@ class api:
 
 def insecure_channel(target, options=None, compression=None):
     """Return Channel mock."""
-    #print("++++++++++++++++++++++++++++++++")
     return Channel()
 
 class Channel:
@@ -604,7 +595,6 @@ class Channel:
 
     def close(self):
         """Close channel - dummy for mock."""
-        #print("grpc channel close")
         pass
 
 class grpc:
@@ -624,4 +614,12 @@ class grpc:
 
         def close(self):
             """Close channel - dummy for mock."""
-            #print("grpc channel close")
+
+class dukpy:
+    def __init__(self):
+        pass
+
+    class JSInterpreter(object):
+        def evaljs(self, code, **kwargs):
+           return "{aaa+}"
+

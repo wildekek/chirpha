@@ -5,8 +5,8 @@ import time
 from chirpha.const import BRIDGE_CONF_COUNT, CONF_APPLICATION_ID
 from tests import common
 
-from .patches import get_size, message, mqtt, set_size
-from tests.common import (REGULAR_CONFIGURATION_FILE, PAYLOAD_PRINT_CONFIGURATION_FILE, NO_APP_CONFIGURATION_FILE)
+from .patches import get_size, mqtt, set_size
+from tests.common import PAYLOAD_PRINT_CONFIGURATION_FILE
 
 def test_extended_debug_level():
     """Test run with extended debug enabled."""
@@ -21,48 +21,69 @@ def test_extended_debug_level():
 
 def test_level_names_with_indexes():
     """Test run with values description with indexes."""
+    def run_test_level_names_with_indexes(config):
+        indexed_configs = common.count_messages(r'/config', r'"value_template":\s*"{{\s*value_json\..*\[.*\]\s*}}"', keep_history=False)
+        assert indexed_configs == 2
 
-    common.chirp_setup_and_run_test(None, test_params=dict(devices=1, codec=5))
-
+    common.chirp_setup_and_run_test(run_test_level_names_with_indexes, test_params=dict(devices=1, codec=5))
 
 def test_values_template_default():
-    """Test diagnostics log content for hat fw version starting from 1.6."""
+    """Test if default value_template is added to configuration."""
+    def run_test_values_template_default(config):
+        indexed_configs = common.count_messages(r'/config', r'value_json.object.counter', keep_history=False)
+        assert indexed_configs == 1
 
-    common.chirp_setup_and_run_test(None, test_params=dict(devices=1, codec=6))
+    common.chirp_setup_and_run_test(run_test_values_template_default, test_params=dict(devices=1, codec=6))
 
 
 def test_explicit_integration_setting():
     """Test run with explicit integration set in codec js."""
+    def run_test_explicit_integration_setting(config):
+        indexed_configs = common.count_messages(r'/climate/.*/config', None, keep_history=False)
+        assert indexed_configs == 1
 
-    common.chirp_setup_and_run_test(None, test_params=dict(devices=1, codec=7))
+    common.chirp_setup_and_run_test(run_test_explicit_integration_setting, test_params=dict(devices=1, codec=7))
 
 
 def test_no_device_class():
     """Test run with no explicit device class set in codec js."""
+    def run_test_no_device_class(config):
+        indexed_configs = common.count_messages(r'/sensor/.*/config', r"device_class", keep_history=False)
+        assert indexed_configs == 0
 
-    common.chirp_setup_and_run_test(None, test_params=dict(devices=1, codec=8))
+    common.chirp_setup_and_run_test(run_test_no_device_class, test_params=dict(devices=1, codec=8))
 
 
 def test_wrong_device_class():
     """Test run with unknown device class set in codec js."""
+    def run_test_wrong_device_class(config):
+        indexed_configs = common.count_messages(r'/sensor/.*/config', None, keep_history=False)
+        assert indexed_configs == 1
+        indexed_configs = common.count_messages(r'/sensor/.*/config', r"device_class", keep_history=False)
+        assert indexed_configs == 0
 
-    common.chirp_setup_and_run_test(None, test_params=dict(devices=1, codec=9))
-
+    common.chirp_setup_and_run_test(run_test_wrong_device_class, test_params=dict(devices=1, codec=9))
 
 def test_command_topic():
     """Test run with command topic set in codec js."""
+    def run_test_command_topic(config):
+        indexed_configs = common.count_messages(r'/config', r'"command_topic".*/down', keep_history=False)
+        assert indexed_configs == 1
 
-    common.chirp_setup_and_run_test(None, test_params=dict(devices=1, codec=10))
+    common.chirp_setup_and_run_test(run_test_command_topic, test_params=dict(devices=1, codec=10))
 
 
 def test_humidifier_dev_class():
     """Test run with humidifier device class in codec js.."""
+    def run_test_humidifier_dev_class(config):
+        indexed_configs = common.count_messages(r'/humidifier/.*/config', None, keep_history=False)
+        assert indexed_configs == 1
 
-    common.chirp_setup_and_run_test(None, test_params=dict(devices=1, codec=15))
+    common.chirp_setup_and_run_test(run_test_humidifier_dev_class, test_params=dict(devices=1, codec=15))
 
 
 def test_ha_status_received():
-    """Test diagnostics log content for hat fw version starting from 1.6."""
+    """Test for HA status message received."""
 
     def run_test_ha_status_received(config):
         set_size(devices=1, codec=0)
@@ -118,7 +139,7 @@ def test_ha_status_received():
 
 
 def test_ha_status_received_with_debug_log():
-    """Test diagnostics log content for hat fw version starting from 1.6."""
+    """Test for HA status message received with debug log enabled."""
 
     def run_test_ha_status_received_with_debug_log(config):
         set_size(devices=1, codec=0)

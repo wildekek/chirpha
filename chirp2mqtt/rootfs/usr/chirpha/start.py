@@ -64,11 +64,11 @@ class run_chirp_ha:
             self._grpc_client = ChirpGrpc(config, __version__)
             self._mqtt_client = ChirpToHA(config, __version__, classes, self._grpc_client)
 
-            self._mqtt_client.start_bridge()
+            #self._mqtt_client.start_bridge()
 
             self._mqtt_client._client.loop_forever()
         except Exception as error:
-            _LOGGER.exception("Chirp failed %s", str(error))
+            _LOGGER.exception("Chirp failed: %s", str(error))
         finally:
             if self._mqtt_client:
                 _LOGGER.info("Closing MQTT connection")

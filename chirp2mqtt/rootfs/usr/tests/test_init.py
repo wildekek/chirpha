@@ -1,8 +1,8 @@
-"""Test the ChirpStack LoRaWan integration initilization path initiated from __init__.py."""
+"""Test the ChirpStack LoRaWan integration initilization path initiated from start.py."""
 from tests import common
 
 from .patches import get_size, mqtt, set_size
-from tests.common import (REGULAR_CONFIGURATION_FILE, PAYLOAD_PRINT_CONFIGURATION_FILE, NO_APP_CONFIGURATION_FILE)
+from tests.common import NO_APP_CONFIGURATION_FILE
 
 def test_entry_setup_unload():
     """Test if integration unloads with default configuration."""
@@ -15,7 +15,7 @@ def test_grpc_connection_failure():
     common.chirp_setup_and_run_test(None, test_params=dict(grpc=0), a_live_at_end=False)
 
 def test_setup_with_no_tenants():
-    """Test if missing tenent has been creted and app is up."""
+    """Test if missing tenant has been creted and app is up."""
 
     common.chirp_setup_and_run_test(None, test_params=dict(tenants=0), a_live_at_end=True, conf_file=NO_APP_CONFIGURATION_FILE)
 
@@ -64,4 +64,4 @@ def test_thread_kill():
 def test_setup_with_failing_mqtt_publish():
     """Test if chirpha gracefully exits in case of mqtt publish failure."""
 
-    common.chirp_setup_and_run_test(None, test_params=dict(publish=0), a_live_at_end=False)
+    common.chirp_setup_and_run_test(None, test_params=dict(publish=0), a_live_at_end=False, check_msg_queue=False)
