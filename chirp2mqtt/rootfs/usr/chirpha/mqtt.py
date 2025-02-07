@@ -478,7 +478,7 @@ class ChirpToHA:
             self.clean_up_disappeared()
         if self._bridge_config_topics_published == 0:
             ret_val = self._client.publish(
-                self._bridge_state_topic, '{"state": "online"}'
+                self._bridge_state_topic, '{"state": "online"}', retain=True
             )
             _LOGGER.info(
                 "Bridge state turned on. MQTT topic %s, publish code %s",

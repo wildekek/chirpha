@@ -28,6 +28,6 @@
 
 - Replaced custom js evaluator with dukpy package
 
-## 1.1.118
+## 1.1.119
 
 - Tests extension and minor fixes in code, file cleanup

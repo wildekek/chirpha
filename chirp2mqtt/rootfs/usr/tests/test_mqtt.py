@@ -102,3 +102,6 @@ def test_humidifier_dev_class(caplog):
         assert indexed_configs == 1
 
     common.chirp_setup_and_run_test(caplog, run_test_humidifier_dev_class, test_params=dict(devices=1, codec=15))
+
+# to remove retained messages
+# mosquitto_pub -h ha -u loramqtt -P ploramqtt -t "application/72a56954-700f-4a52-90d2-86cf76df5c57/bridge/status"  -n -r -d
