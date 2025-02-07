@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-echo "lead token: end"
+echo -e "id: a-b-c-d\ntoken: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJjaGlycHN0YWNrIiwiaXNzIjoiY2hpcnBzdGFjayIsInN1YiI6IjVkMTkxNzYwLWY4ZjItNDIzZC1hYTJlLTE1YWU3YzBiNTUxOCIsInR5cCI6ImtleSJ9.6yW5y8edBDufmd44i2jDyDsNGTGee2ba3ZG4egJYoyI"

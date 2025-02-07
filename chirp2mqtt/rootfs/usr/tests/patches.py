@@ -21,7 +21,7 @@ MODEL_SIZES = [
 CODEC = [   # array of (no_of_sensors, "codec_code")
     (   #0
         4,
-        'function getHaDeviceInfo() {return {device: {manufacturer: "vendor0",model: "model1",},entities: {sensor{dev_no}:{entity_conf: {device_class: "gas"}},battery:{entity_conf: {value_template: "{{ batteryLevel }}",entity_category: "diagnostic",device_class: "battery",unit_of_measurement: "%",}},rssi:{entity_conf: {value_template: "{{ value_json.rxInfo[-1].rssi | int }}",entity_category: "diagnostic",device_class: "signal_strength",}},altitude:{entity_conf:{value_template: "{{ value_json.rxInfo[-1].location.altitude | int }}"}}}};}',
+        'function getHaDeviceInfo() {return {device: {manufacturer: "vendor0",model: "model1",},entities: {sensor{dev_no}:{entity_conf: {device_class: "gas"}},battery:{entity_conf: {value_template: "{{ value_json.batteryLevel }}",entity_category: "diagnostic",device_class: "battery",unit_of_measurement: "%",}},rssi:{entity_conf: {value_template: "{{ value_json.rxInfo[-1].rssi | int }}",entity_category: "diagnostic",device_class: "signal_strength",}},altitude:{entity_conf:{integration:"sensor", value_template: "{{ value_json.rxInfo[-1].location.altitude | int }}"}}}};}',
     ),
     (   #1
         1,
@@ -580,6 +580,43 @@ class api:
         request.id = None
         request.limit = None
         return request
+
+    def InternalServiceStub(self):
+        """Get internal service object."""
+        return api.InternalService()
+
+    class InternalService:
+        """Internal service class mock."""
+        def DeleteApiKeyRequest():
+            request = lambda: None
+            request.id = None
+            return request
+
+        def DeleteApiKey(self, deleteApiKeyReq, metadata):
+            request = lambda: None
+            return request
+
+        def ListApiKeysRequest():
+            request = lambda: None
+            request.limit = None
+            request.offset = None
+            request.is_admin = None
+            return request
+
+        def ListApiKeys(self, listApiKeysReq, metadata):
+            no_of_api_keys = 2
+            request = lambda: None
+            if listApiKeysReq.limit is not None:
+                request.result = []
+                for i in range(0, no_of_api_keys):
+                    api_key = lambda: None
+                    api_key.id = f"apikey{i}"
+                    api_key.name = f"apikey_name{i}"
+                    api_key.tenant_id = f"tenant_id{i}"
+                    api_key.is_admin = (i % 2) == 0
+                    request.result.append(api_key)
+            request.total_count = no_of_api_keys
+            return request
 
 def insecure_channel(target, options=None, compression=None):
     """Return Channel mock."""

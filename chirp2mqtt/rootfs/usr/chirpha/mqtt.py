@@ -31,19 +31,12 @@ from .const import (
     CONF_OPTIONS_RESTORE_AGE,
     CONF_OPTIONS_START_DELAY,
     CONNECTIVITY_DEVICE_CLASS,
-    DOMAIN,
-    STATISTICS_DEVICES,
-    STATISTICS_SENSORS,
-    STATISTICS_UPDATED,
     ENTITY_CATEGORY_DIAGNOSTIC,
     CONF_APPLICATION_ID,
-    CONF_API_SERVER,
-    CONF_API_PORT,
-    CONF_TENANT,
-    CONF_APPLICATION,
     CONF_MQTT_SERVER,
     CONF_MQTT_PORT,
     CONF_MQTT_DISC,
+    WARMSG_DEVCLS_REMOVED,
 )
 from .grpc import ChirpGrpc
 
@@ -363,13 +356,13 @@ class ChirpToHA:
                     )
                     if self._print_payload:
                         _LOGGER.info(
-                            "Previous sensor values restored. Payload %s",
+                            "Previous sensor values restored. MQTT payload %s",
                             restore_message[1],
                         )
                 self._messages_to_restore_values = []
         elif message.topic == self._bridge_restart_topic:
             _LOGGER.info(
-                "Restart requested, starting devices re-registration.%s",
+                "Restart requested, starting devices re-registration(%s).",
                 message.retain,
             )
             self.start_bridge()
@@ -377,7 +370,7 @@ class ChirpToHA:
             payload = message.payload.decode("utf-8")
             if payload == "online":
                 _LOGGER.info(
-                    "HA online, starting devices registration.%s",
+                    "HA online, starting devices registration(%s).",
                     message.retain,
                 )
                 self.start_bridge()
@@ -388,7 +381,6 @@ class ChirpToHA:
             if payload_struct:
                 time_stamp = payload_struct.get("time_stamp")
                 if subtopics[-1] == "config":
-                    # _LOGGER.info("MQTT registration message received: MQTT topic %s, retain %s.", message.topic, message.retain)
                     if (
                         "via_device" in payload_struct["device"]
                         and payload_struct["device"]["via_device"]
@@ -397,22 +389,20 @@ class ChirpToHA:
                         _LOGGER.info("MQTT registration message received: MQTT topic %s, time stamp %s.", message.topic, time_stamp)
                         if self._print_payload:
                             _LOGGER.debug(
-                                "MQTT registration message received: payload %s", payload
+                                "MQTT registration message received: MQTT payload %s", payload
                             )
                         self._old_devices_config_topics.add(message.topic)
-                        # _LOGGER.info("Added to previous refresh time self device list %s (%s) %s %s.", message.topic, len(self._old_devices_config_topics), payload_struct.get('time_stamp'), self._bridge_init_time)
                         if (
                             time_stamp and float(time_stamp) >= self._bridge_init_time
                         ):
                             self._config_topics_published += 1
-                            # _LOGGER.error("Counter increased to %s", self._config_topics_published)
                     else:
                         self._bridge_config_topics_published -= 1
                 elif subtopics[-1] == "cur":
                     dev_eui = subtopics[-3]
                     _LOGGER.info("MQTT cached values received topic %s", message.topic)
                     if self._print_payload:
-                        _LOGGER.debug("MQTT cached values received payload %s", payload)
+                        _LOGGER.debug("MQTT cached values received MQTT payload %s", payload)
                     _LOGGER.debug(
                         "MQTT cached values received payload time %s, bridge time %s, cached object %s, value cache %s",
                         time_stamp,
@@ -446,7 +436,7 @@ class ChirpToHA:
                         or cache_not_retrieved == 0
                     ):
                         ret_val = self._client.unsubscribe(self._sub_cur_topic)
-                        _LOGGER.warning(
+                        _LOGGER.info(
                             "MQTT unsubscribed from %s(%s)(%s)(%s)",
                             self._sub_cur_topic,
                             ret_val,
@@ -515,7 +505,7 @@ class ChirpToHA:
         )
         if self._print_payload:
             _LOGGER.debug(
-                "MQTT cached values related payload %s published with code %s",
+                "MQTT cached values related MQTT payload %s published with code %s",
                 payload_struct,
                 ret_val,
             )
@@ -559,15 +549,15 @@ class ChirpToHA:
                         break
                 if not mqtt_integration:
                     mqtt_integration = "sensor"
-                    _LOGGER.error(
-                        "Could not detect integration by device class %s for dev_eui %s, integration set to 'sensor', device class removed",
+                    _LOGGER.warning(
+                        WARMSG_DEVCLS_REMOVED,
                         device_class,
                         dev_conf["dev_eui"],
                     )
                     del sensor["entity_conf"]["device_class"]
             else:
                 mqtt_integration = "sensor"
-                _LOGGER.warning(
+                _LOGGER.info(
                     "No device class set for dev_eui %s/%s and no integration specified, set to 'sensor'",
                     dev_conf["dev_eui"],
                     dev_id,

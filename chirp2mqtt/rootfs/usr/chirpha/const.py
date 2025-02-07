@@ -43,6 +43,7 @@ DEFAULT_OPTIONS_DEBUG_PAYLOAD = False
 
 CHIRPSTACK_TENANT = "HA owned"
 CHIRPSTACK_APPLICATION = "HA integration"
+CHIRPSTACK_API_KAY_NAME = "chirpha"
 
 MQTT_ORIGIN = "ChirpLora"
 BRIDGE_VENDOR = "Chirp2MQTT"
@@ -62,3 +63,8 @@ STATISTICS_DEVICES = "chirp_devices"
 STATISTICS_UPDATED = "chirp_updated"
 
 ENTITY_CATEGORY_DIAGNOSTIC = "diagnostic"
+
+ERRMSG_CODEC_ERROR = "Profile %s discovery codec script error '%s', source code '%s' converted to json '%s'"
+ERRMSG_DEVICE_IGNORED = "Discovery codec (%s->%s) missing or faulty for device %s with profile %s, device ignored"
+WARMSG_APPID_WRONG = "%s is not valid application ID, using %s (tenant %s, application %s)"
+WARMSG_DEVCLS_REMOVED = "Could not detect integration by device class %s for dev_eui %s, integration set to 'sensor', device class removed"

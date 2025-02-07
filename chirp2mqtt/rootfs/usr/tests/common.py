@@ -5,6 +5,7 @@ import threading
 import json
 import time
 import re
+import logging
 from pathlib import Path
 
 from chirpha.const import (
@@ -32,10 +33,14 @@ class run_chirp_ha:
     ch_tread = None
     cirpha_instance = None
 
+    def __init__(self, configuration_file):
+        self._configuration_file = configuration_file
+
     def __enter__(self):
-        self.cirpha_instance = chirpha.run_chirp_ha()
-        self.ch_tread = threading.Thread(target=self.cirpha_instance.main)
-        self.ch_tread.start()
+        if not self.cirpha_instance:
+            self.cirpha_instance = chirpha.run_chirp_ha(self._configuration_file)
+            self.ch_tread = threading.Thread(target=self.cirpha_instance.main)
+            self.ch_tread.start()
         return self
 
     def __exit__(self, *args):
@@ -46,7 +51,7 @@ class run_chirp_ha:
 @mock.patch("chirpha.grpc.api", new=api)
 @mock.patch("chirpha.grpc.grpc.insecure_channel", new=insecure_channel)
 @mock.patch("chirpha.mqtt.mqtt", new=mqtt)
-def chirp_setup_and_run_test(run_test_case, conf_file=REGULAR_CONFIGURATION_FILE, test_params=dict(), a_live_at_end=True, kill_at_end=False, check_msg_queue=True):
+def chirp_setup_and_run_test(caplog, run_test_case, conf_file=REGULAR_CONFIGURATION_FILE, test_params=dict(), a_live_at_end=True, kill_at_end=False, check_msg_queue=True, allowed_msg_level=logging.INFO):
     """Execute test case in standard configuration environment with grpc/mqtt mocks."""
     module_dir = Path(globals().get("__file__", "./_")).absolute().parent
     full_path_to_conf_file =str(module_dir) + '/' + conf_file
@@ -56,36 +61,37 @@ def chirp_setup_and_run_test(run_test_case, conf_file=REGULAR_CONFIGURATION_FILE
     config = config | INTERNAL_CONFIG
 
     set_size(**test_params)
-    with patch("chirpha.start.CONFIGURATION_FILE", new=full_path_to_conf_file):
-        with run_chirp_ha() as ch:
-            time.sleep(0.01)
+    with run_chirp_ha(full_path_to_conf_file) as ch:
+        caplog.set_level(logging.DEBUG)
+        time.sleep(0.01)
+        if ch.ch_tread.is_alive():
+            mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).wait_empty_queue()
             if ch.ch_tread.is_alive():
+                mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).publish(f"{config.get(CONF_MQTT_DISC)}/status", "online")
                 mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).wait_empty_queue()
+                if check_msg_queue:
+                    ha_online = count_messages(r'homeassistant/status', r'online', keep_history=True)
+                    bridge_online = count_messages(r'.*/bridge/status', r'online', keep_history=True)
+                    bridge_config = count_messages(r'.*', r'"name": "Chirp2MQTT Bridge"', keep_history=True)
+                    assert ha_online == 1   # 1 message sent from test environment
+                    assert bridge_config == 2   # 2 messages sent to register bridge
+                    assert bridge_online == 1   # 1 online message sent when bridge is registered
+
+                if run_test_case:
+                    run_test_case(config)
+
+                mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).wait_empty_queue()
+                assert a_live_at_end == ch.ch_tread.is_alive()
                 if ch.ch_tread.is_alive():
-                    mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).publish(f"{config.get(CONF_MQTT_DISC)}/status", "online")
-                    mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).wait_empty_queue()
-                    if check_msg_queue:
-                        ha_online = count_messages(r'homeassistant/status', r'online', keep_history=True)
-                        bridge_online = count_messages(r'.*/bridge/status', r'online', keep_history=True)
-                        bridge_config = count_messages(r'.*', r'"name": "Chirp2MQTT Bridge"', keep_history=True)
-                        messages = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).get_published(keep_history=True)
-                        assert ha_online == 1   # 1 message sent from test environment
-                        assert bridge_config == 2   # 2 messages sent to register bridge
-                        assert bridge_online == 1   # 1 online message sent when bridge is registered
-
-                    if run_test_case:
-                        run_test_case(config)
-
-                    mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).wait_empty_queue()
-                    assert a_live_at_end == ch.ch_tread.is_alive()
-                    if ch.ch_tread.is_alive():
-                        assert mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).stat_sensors == get_size("sensors") * get_size("idevices")
-                        assert mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).stat_devices == get_size("idevices")
-                        if kill_at_end:
-                            ch.cirpha_instance.stop_chirp_ha(None, None)
-                            mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).wait_empty_queue()
-            else:
-                assert not a_live_at_end
+                    assert mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).stat_sensors == get_size("sensors") * get_size("idevices")
+                    assert mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).stat_devices == get_size("idevices")
+                    for record in caplog.records:
+                        assert record.levelno <= allowed_msg_level
+                    if kill_at_end:
+                        ch.cirpha_instance.stop_chirp_ha(None, None)
+                        mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).wait_empty_queue()
+        else:
+            assert not a_live_at_end
 
 def reload_devices(config):
     """Reload devices from ChirpStack server and wait for activity completion."""
@@ -100,13 +106,24 @@ def count_messages(topic, payload, keep_history=False):
     for message in messages:
         mi_topic = re.search(topic, message[0])
         if payload:
-            mi_payload = re.search(payload, message[1])
-            if mi_topic and mi_payload:
-                count += 1
+            if message[1]:
+                mi_payload = re.search(payload, message[1])
+                if mi_topic and mi_payload:
+                    count += 1
         else:
             if mi_topic:
                 count += 1
 
+    return count
+
+def count_messages_with_no_payload(topic, keep_history=False):
+    """Count posted mqtt messages that matche topic and payload filters."""
+    messages = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).get_published(keep_history=keep_history)
+    count = 0
+    for message in messages:
+        mi_topic = re.search(topic, message[0])
+        if mi_topic and not message[1]:
+            count += 1
     return count
 
 def check_for_no_registration(config):

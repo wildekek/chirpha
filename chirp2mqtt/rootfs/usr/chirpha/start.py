@@ -1,12 +1,13 @@
 """The Chirpstack LoRaWan integration - setup."""
 from __future__ import annotations
-__version__ = "1.1.46"
+__version__ = "1.1.47"
 
 import logging
 import logging.handlers
 import json
 import signal
 import os
+import sys
 from pathlib import Path
 from typing import Final
 
@@ -31,10 +32,11 @@ INTERNAL_CONFIG = {
 }
 
 class run_chirp_ha:
-    def __init__(self) -> None:
+    def __init__(self, configuration_file) -> None:
         self._grpc_client = None
         self._mqtt_client = None
         self._config = None
+        self._configuration_file = configuration_file
         signal.signal(signal.SIGTERM, self.stop_chirp_ha)
         pass
 
@@ -51,9 +53,9 @@ class run_chirp_ha:
         try:
             module_dir = Path(globals().get("__file__", "./_")).absolute().parent
             _LOGGER.info("Chirp started %s, %s", os.getcwd(), module_dir)
-            with open(CONFIGURATION_FILE, 'r') as file:
+            with open(self._configuration_file, 'r') as file:
                 config = json.load(file)
-            config = config | INTERNAL_CONFIG
+            config = INTERNAL_CONFIG | config
             self._config = config
             with open(str(module_dir)+'/classes.json', 'r') as file:
                 classes = json.load(file)
@@ -63,8 +65,6 @@ class run_chirp_ha:
             _LOGGER.info("Version %s", __version__)
             self._grpc_client = ChirpGrpc(config, __version__)
             self._mqtt_client = ChirpToHA(config, __version__, classes, self._grpc_client)
-
-            #self._mqtt_client.start_bridge()
 
             self._mqtt_client._client.loop_forever()
         except Exception as error:
@@ -85,5 +85,5 @@ class run_chirp_ha:
 
 
 if __name__=='__main__':
-    run_chirp_ha().main()
+    run_chirp_ha(sys.argv[1] if len(sys.argv)>1 else CONFIGURATION_FILE).main()
     _LOGGER.info("Done.")

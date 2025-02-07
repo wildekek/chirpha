@@ -10,8 +10,7 @@ import re
 from chirpstack_api import api
 import grpc
 
-from .const import CONF_API_PORT, CONF_API_SERVER, CONF_APPLICATION_ID, CHIRPSTACK_TENANT, CHIRPSTACK_APPLICATION
-
+from .const import CONF_API_PORT, CONF_API_SERVER, CONF_APPLICATION_ID, CHIRPSTACK_TENANT, CHIRPSTACK_APPLICATION, ERRMSG_CODEC_ERROR, ERRMSG_DEVICE_IGNORED, WARMSG_APPID_WRONG, CHIRPSTACK_API_KAY_NAME
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -27,12 +26,15 @@ class ChirpGrpc:
         self._channel = grpc.insecure_channel(
             f"{self._config.get(CONF_API_SERVER)}:{self._config.get(CONF_API_PORT)}"
         )
-        bearer = subprocess.run(["chirpstack", "-c", "/etc/chirpstack", "create-api-key", "--name", "chirpha"], capture_output=True, text=True).stdout.split("token: ")[-1].rstrip("\n")
+        token_message = subprocess.run(["chirpstack", "-c", "/etc/chirpstack", "create-api-key", "--name", CHIRPSTACK_API_KAY_NAME], capture_output=True, text=True).stdout
+        self._token_id = token_message.split("id: ")[-1].split("\n")[0]
+        bearer = token_message.split("token: ")[-1].rstrip("\n")
         self._auth_token = [("authorization", f"Bearer {bearer}")]
         _LOGGER.info(
-            "gRPC channel opened for %s:%s",
+            "gRPC channel opened for %s:%s, token id %s",
             self._config.get(CONF_API_SERVER),
             self._config.get(CONF_API_PORT),
+            self._token_id,
         )
         if not self.is_valid_app_id( self._application_id):
             tenants_on_chirp = self.get_chirp_tenants()
@@ -43,7 +45,7 @@ class ChirpGrpc:
                 createTenantReq.tenant.can_have_gateways = True
                 createTenantReq.tenant.max_gateway_count = 1
                 tenantResp = tenant.Create(createTenantReq, metadata=self._auth_token)
-                _LOGGER.info("Tenant %s (id %s) created", createTenantReq.tenant.name, tenantResp.id)
+                _LOGGER.info("Tenant '%s' (id %s) created", createTenantReq.tenant.name, tenantResp.id)
                 tenants_on_chirp = self.get_chirp_tenants()
             for tenant, id in tenants_on_chirp.items():
                 tenant_id = id
@@ -55,15 +57,26 @@ class ChirpGrpc:
                 createApplicationReq.application.name = CHIRPSTACK_APPLICATION
                 createApplicationReq.application.tenant_id = tenant_id
                 applicationResp = application.Create(createApplicationReq, metadata=self._auth_token)
-                _LOGGER.info("Application %s (id %s, tenant %s) created", createApplicationReq.application.name, tenant, applicationResp.id)
+                _LOGGER.info("Application '%s' (id %s, tenant %s) created", createApplicationReq.application.name, tenant, applicationResp.id)
                 applications_on_chirp = self.get_tenant_applications(tenant_id)
             for application, id in applications_on_chirp.items():
                 application_id = id
                 break
-            _LOGGER.warning("%s is not valid application ID, using %s (tenant %s, application %s)", self._application_id, application_id, tenant, application)
+            _LOGGER.warning(WARMSG_APPID_WRONG, self._application_id, application_id, tenant, application)
             self._application_id = application_id
         self.js_interpreter = dukpy.JSInterpreter()
+#        self.api_key_cleanup(CHIRPSTACK_API_KAY_NAME, self._token_id, tenant_id)
         _LOGGER.info("ChirpStack application ID %s", self._application_id)
+
+    def api_key_cleanup(self, api_key_name, api_key_id, tenant_id):
+        api_keys = api.InternalServiceStub(self._channel)
+        listApiKeysReq = api.ListApiKeysRequest()
+        listApiKeysReq.tenant_id = tenant_id
+        listApiKeysReq.limit = 10
+#        listApiKeysReq.offset = 0
+        apiKeysResp = api_keys.ListApiKeys(listApiKeysReq, metadata=self._auth_token)
+        listApiKeysReq.limit = apiKeysResp.total_count
+        apiKeysResp = api_keys.ListApiKeys(listApiKeysReq, metadata=self._auth_token)
 
     def get_chirp_tenants(self):
         """Get tenant list from api server, build name/id dictionary and return."""
@@ -155,7 +168,7 @@ class ChirpGrpc:
                     codec_json = discovery
             except Exception as error:  # pylint: disable=broad-exception-caught
                 _LOGGER.error(
-                    "Profile %s discovery codec script error '%s', source code '%s' converted to json '%s'",
+                    ERRMSG_CODEC_ERROR,
                     profile.device_profile.name,
                     str(error),
                     codec_code,
@@ -176,7 +189,7 @@ class ChirpGrpc:
                     discovery = None
             if not discovery:
                 _LOGGER.error(
-                    "Discovery codec (%s->%s) missing or faulty for device %s with profile %s, device ignored",
+                    ERRMSG_DEVICE_IGNORED,
                     codec_code, codec_json,
                     device.name,
                     profile.device_profile.name,

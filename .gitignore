@@ -3,3 +3,8 @@ __pycache__/
 .venv/
 .coverage
 .env
+chirptoha
+chirpversion
+chirpwebtoha
+stopchirpstack
+.vscode/
