@@ -1,2 +1,0 @@
-#!/usr/bin/env bash
-scp /home/modrisb/contributions/pijups/chirpha/chirp2mqtt/rootfs/usr/chirpha/ingress.py root@ha.c24:/share/chirp2mqtt

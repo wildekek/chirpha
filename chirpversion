@@ -1,7 +1,0 @@
-#!/usr/bin/env bash
-PPATH=$HOME/contributions/pijups/chirpha/chirp2mqtt
-CURR_VERSION=$(cat $PPATH/config.yaml | grep version | cut -d'"' -f2)
-CURR_MINOR=$(cat $PPATH/config.yaml | grep version | cut -d'"' -f2 | cut -d. -f3)
-NEW_MINOR=$((CURR_MINOR + 1))
-sed -i "s/\.${CURR_MINOR}\"/\.$NEW_MINOR\"/" $PPATH/config.yaml
-
