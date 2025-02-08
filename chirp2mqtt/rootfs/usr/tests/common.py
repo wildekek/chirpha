@@ -18,6 +18,8 @@ from chirpha.start import INTERNAL_CONFIG
 from .patches import api, message, mqtt, set_size, get_size, insecure_channel
 
 REGULAR_CONFIGURATION_FILE ="test_configuration.json"
+REGULAR_CONFIGURATION_FILE_INFO ="test_configuration_info_log.json"
+REGULAR_CONFIGURATION_FILE_ERROR ="test_configuration_error_log.json"
 PAYLOAD_PRINT_CONFIGURATION_FILE ="test_configuration_payload.json"
 NO_APP_CONFIGURATION_FILE ="test_configuration_no_app.json"
 
@@ -51,7 +53,7 @@ class run_chirp_ha:
 @mock.patch("chirpha.grpc.api", new=api)
 @mock.patch("chirpha.grpc.grpc.insecure_channel", new=insecure_channel)
 @mock.patch("chirpha.mqtt.mqtt", new=mqtt)
-def chirp_setup_and_run_test(caplog, run_test_case, conf_file=REGULAR_CONFIGURATION_FILE, test_params=dict(), a_live_at_end=True, kill_at_end=False, check_msg_queue=True, allowed_msg_level=logging.INFO):
+def chirp_setup_and_run_test(caplog, run_test_case, conf_file=REGULAR_CONFIGURATION_FILE, test_params=dict(), a_live_at_end=True, kill_at_end=False, check_msg_queue=True, allowed_msg_level=logging.INFO, no_ha_online=False):
     """Execute test case in standard configuration environment with grpc/mqtt mocks."""
     module_dir = Path(globals().get("__file__", "./_")).absolute().parent
     full_path_to_conf_file =str(module_dir) + '/' + conf_file
@@ -61,21 +63,37 @@ def chirp_setup_and_run_test(caplog, run_test_case, conf_file=REGULAR_CONFIGURAT
     config = config | INTERNAL_CONFIG
 
     set_size(**test_params)
+    mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).get_published()
     with run_chirp_ha(full_path_to_conf_file) as ch:
-        caplog.set_level(logging.DEBUG)
+        caplog.set_level(config['log_level'].upper())
         time.sleep(0.01)
         if ch.ch_tread.is_alive():
             mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).wait_empty_queue()
             if ch.ch_tread.is_alive():
-                mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).publish(f"{config.get(CONF_MQTT_DISC)}/status", "online")
+                if not no_ha_online:
+                    mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).publish(f"{config.get(CONF_MQTT_DISC)}/status", "online")
+                time.sleep(0.01)
                 mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).wait_empty_queue()
                 if check_msg_queue:
-                    ha_online = count_messages(r'homeassistant/status', r'online', keep_history=True)
-                    bridge_online = count_messages(r'.*/bridge/status', r'online', keep_history=True)
-                    bridge_config = count_messages(r'.*', r'"name": "Chirp2MQTT Bridge"', keep_history=True)
-                    assert ha_online == 1   # 1 message sent from test environment
-                    assert bridge_config == 2   # 2 messages sent to register bridge
-                    assert bridge_online == 1   # 1 online message sent when bridge is registered
+                    for i in range(0,10):
+                        ha_online = count_messages(r'homeassistant/status', r'online', keep_history=True)
+                        bridge_online = count_messages(r'.*/bridge/status', r'online', keep_history=True)
+                        bridge_config = count_messages(r'.*', r'"name"\: "Chirp2MQTT Bridge"', keep_history=True)
+                        config_topics = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).get_published(keep_history=True)
+                        #print("======= ", ha_online, bridge_online, bridge_config, config_topics)
+                        #else:
+                        #    time.sleep(0.05)
+                        mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).wait_empty_queue()
+                        #time.sleep(0.05)
+                        #assert bridge_config == 2   # 2 messages sent to register bridge
+                        #assert bridge_online == 1   # 1 online message sent when bridge is registered
+                        if bridge_online == 1: break
+                        time.sleep(0.1)
+                    #print("ooooooo ", i, ha_online, 1 if not no_ha_online else 0)
+                    #if not no_ha_online:
+                    assert ha_online == (1 if not no_ha_online else 0)   # 1 message sent from test environment
+                    assert bridge_config == 2
+                    assert bridge_online == 1
 
                 if run_test_case:
                     run_test_case(config)

@@ -272,7 +272,7 @@ class mqtt:
                 if not get_size("publish") and self._publish_count > 0:
                     break
                 sub_topics = msg[0].split("/")
-                if sub_topics[-1] == "restart" or (sub_topics[0] != "application" and sub_topics[-1] == "status"):
+                if sub_topics[-1] == "restart": # or (sub_topics[0] != "application" and sub_topics[-1] == "status"): # allowing single online message
                     self.reset_stats()
                 if msg[1] != None and sub_topics[-1] in self._subscribed:
                     self.on_message(self, None, message(msg[0], msg[1], msg[2], msg[3]))

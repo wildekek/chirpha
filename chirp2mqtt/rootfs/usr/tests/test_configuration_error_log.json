@@ -1,0 +1,10 @@
+{
+    "application_id": "ApplicationId0",
+    "mqtt_user": "loramqtt",
+    "mqtt_password": "ploramqtt",
+    "discovery_prefix": "homeassistant",
+    "options_start_delay": 0,
+    "options_restore_age": 0,
+    "options_debug_print_payload": false,
+    "log_level": "error"
+}

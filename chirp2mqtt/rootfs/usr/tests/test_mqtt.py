@@ -20,7 +20,7 @@ def test_extended_debug_level(caplog):
     common.chirp_setup_and_run_test(caplog, run_test_level_names_with_indexes, conf_file=PAYLOAD_PRINT_CONFIGURATION_FILE)
     i_sensor_warn = 0
     for record in caplog.records:
-        if record.levelno == logging.DEBUG and "MQTT payload" in record.msg: i_sensor_warn += 1
+        if record.levelno == logging.DEBUG and "MQTT payload" in record.msg: i_sensor_warn += 1;
     assert i_sensor_warn > 0
 
 def test_extended_debug_level_off(caplog):

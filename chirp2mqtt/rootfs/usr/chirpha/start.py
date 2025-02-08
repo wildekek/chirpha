@@ -52,7 +52,6 @@ class run_chirp_ha:
         config = None
         try:
             module_dir = Path(globals().get("__file__", "./_")).absolute().parent
-            _LOGGER.info("Chirp started %s, %s", os.getcwd(), module_dir)
             with open(self._configuration_file, 'r') as file:
                 config = json.load(file)
             config = INTERNAL_CONFIG | config
@@ -60,8 +59,8 @@ class run_chirp_ha:
             with open(str(module_dir)+'/classes.json', 'r') as file:
                 classes = json.load(file)
             log_level = logging._nameToLevel.get(config['log_level'].upper(),logging.INFO)
-            log_level = logging.DEBUG
             logging.basicConfig(level=log_level, format=FMT, datefmt=FORMAT_DATETIME)
+            _LOGGER.info("ChirpHA started %s, %s", os.getcwd(), module_dir)
             _LOGGER.info("Version %s", __version__)
             self._grpc_client = ChirpGrpc(config, __version__)
             self._mqtt_client = ChirpToHA(config, __version__, classes, self._grpc_client)
