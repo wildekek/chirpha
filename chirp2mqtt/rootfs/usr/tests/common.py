@@ -22,6 +22,7 @@ REGULAR_CONFIGURATION_FILE_INFO ="test_configuration_info_log.json"
 REGULAR_CONFIGURATION_FILE_ERROR ="test_configuration_error_log.json"
 PAYLOAD_PRINT_CONFIGURATION_FILE ="test_configuration_payload.json"
 NO_APP_CONFIGURATION_FILE ="test_configuration_no_app.json"
+WITH_DELAY_CONFIGURATION_FILE ="test_configuration_delay.json"
 
 # pytest tests/components/chirp/
 # pytest tests/components/chirp/ --cov=homeassistant.components.chirp --cov-report term-missing -vv
@@ -72,7 +73,6 @@ def chirp_setup_and_run_test(caplog, run_test_case, conf_file=REGULAR_CONFIGURAT
             if ch.ch_tread.is_alive():
                 if not no_ha_online:
                     mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).publish(f"{config.get(CONF_MQTT_DISC)}/status", "online")
-                time.sleep(0.01)
                 mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).wait_empty_queue()
                 if check_msg_queue:
                     for i in range(0,10):
@@ -80,18 +80,12 @@ def chirp_setup_and_run_test(caplog, run_test_case, conf_file=REGULAR_CONFIGURAT
                         bridge_online = count_messages(r'.*/bridge/status', r'online', keep_history=True)
                         bridge_config = count_messages(r'.*', r'"name"\: "Chirp2MQTT Bridge"', keep_history=True)
                         config_topics = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).get_published(keep_history=True)
-                        #print("======= ", ha_online, bridge_online, bridge_config, config_topics)
-                        #else:
-                        #    time.sleep(0.05)
                         mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).wait_empty_queue()
-                        #time.sleep(0.05)
-                        #assert bridge_config == 2   # 2 messages sent to register bridge
-                        #assert bridge_online == 1   # 1 online message sent when bridge is registered
                         if bridge_online == 1: break
                         time.sleep(0.1)
-                    #print("ooooooo ", i, ha_online, 1 if not no_ha_online else 0)
+                    #print("ooooooo ", no_ha_online, i, ha_online, 1 if not no_ha_online else 0)
                     #if not no_ha_online:
-                    assert ha_online == (1 if not no_ha_online else 0)   # 1 message sent from test environment
+                    assert ha_online == (1 if not no_ha_online else 0)   # 1 message conditionally sent from test environment
                     assert bridge_config == 2
                     assert bridge_online == 1
 

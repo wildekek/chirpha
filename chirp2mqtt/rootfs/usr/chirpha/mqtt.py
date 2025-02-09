@@ -98,7 +98,6 @@ class ChirpToHA:
         self._bridge_indentifier = to_lower_case_no_blanks(
             f"{BRIDGE_VENDOR} {BRIDGE} {self._unique_id}"
         )
-        self._bridge_init_completed = False
         self._ha_online_processed = False
         self._ha_online_event = threading.Event()
         self._bridge_init_time = None
@@ -145,11 +144,16 @@ class ChirpToHA:
         ]
 
         ret_val = self._client.publish( self._initialize_topic, "initialize" )
+        _LOGGER.info(
+            "Initialization message published. MQTT topic %s, publish code %s",
+            self._initialize_topic,
+            ret_val,
+        )
 
         self._wait_for_ha_online = threading.Thread(target=self.ha_online_waiter)
 
     def ha_online_waiter(self): # to start bridge if homeassistant/status message is not received within discovery timeout
-        if not self._ha_online_event.wait(self._discovery_delay):
+        if not self._ha_online_event.wait(self._discovery_delay+0.01):
             ret_val = self._client.publish( self._initialize_topic, "configure" )
             _LOGGER.debug("%s timeout expired, but no HA online message received, starting bridge now (%s)", self._discovery_delay, ret_val)
 
@@ -238,6 +242,14 @@ class ChirpToHA:
             retain=True,
         )
         self._bridge_config_topics_published += 1
+        ret_val = self._client.publish(
+            self._bridge_state_topic, '{"state": "online"}', retain=True
+        )
+        _LOGGER.info(
+            "Bridge state turned on. MQTT topic %s, publish code %s",
+            self._bridge_state_topic,
+            ret_val,
+        )
 
         device_sensors = self._grpc_client.get_current_device_entities()
 
@@ -321,7 +333,6 @@ class ChirpToHA:
             self._dev_count,
             self._dev_sensor_count,
         )
-        self._bridge_init_completed = False
 
     def clean_up_disappeared(self):
         """Remove retained config messages from mqtt server if not in recent device list."""
@@ -340,30 +351,7 @@ class ChirpToHA:
         """Process subscribed messages."""
         self._last_update = datetime.datetime.now(UTC_TIMEZONE)
         if message.topic == self._bridge_state_topic:
-            _LOGGER.info("Bridge status message received (%s)", self._bridge_init_completed)
-            if not self._bridge_init_completed:
-                self._bridge_init_completed = True
-                time.sleep(self._discovery_delay)
-                self._cur_open_time = time.time()
-                ret_val = self._client.subscribe(self._sub_cur_topic)
-                _LOGGER.info(
-                    "Subscribed to retained values topic %s (%s)",
-                    self._sub_cur_topic,
-                    ret_val,
-                )
-                for restore_message in self._messages_to_restore_values:
-                    ret_val = self._client.publish(*restore_message)
-                    _LOGGER.info(
-                        "Previous sensor values restored. Topic %s, publish code %s",
-                        restore_message[0],
-                        ret_val,
-                    )
-                    if self._print_payload:
-                        _LOGGER.info(
-                            "Previous sensor values restored. MQTT payload %s",
-                            restore_message[1],
-                        )
-                self._messages_to_restore_values = []
+            _LOGGER.info("Bridge status message received ", )
         elif message.topic == self._bridge_restart_topic:
             _LOGGER.info(
                 "Restart requested, starting devices re-registration (retain=%s).",
@@ -384,6 +372,15 @@ class ChirpToHA:
                     _LOGGER.info(
                         "HA online message received, but configuration already completed.",
                     )
+            elif payload == "offline":
+                self._ha_online_processed = False
+                self._client.subscribe(self._initialize_topic)
+                self._client.unsubscribe(self._bridge_state_topic)
+                self._client.unsubscribe(self._bridge_restart_topic)
+                self._client.unsubscribe(
+                    f"application/{self._application_id}/device/+/event/up"
+                )
+                self._client.unsubscribe(f"{self._discovery_prefix}/+/+/+/config")
 
         elif message.topic == self._initialize_topic:
             payload = message.payload.decode("utf-8")
@@ -393,7 +390,7 @@ class ChirpToHA:
             )
             if payload == "initialize":
                 self._wait_for_ha_online.start()
-            elif not self._ha_online_processed:
+            elif not self._ha_online_processed: # configure
                 self._ha_online_processed = True
                 self._client.unsubscribe(self._initialize_topic)
                 self._client.subscribe(self._bridge_state_topic)
@@ -506,15 +503,29 @@ class ChirpToHA:
             )
             self.clean_up_disappeared()
         if self._bridge_config_topics_published == 0:
-            ret_val = self._client.publish(
-                self._bridge_state_topic, '{"state": "online"}'
-            )
+            self._bridge_config_topics_published = -1
+            self._bridge_init_completed = True
+            time.sleep(self._discovery_delay)
+            self._cur_open_time = time.time()
+            ret_val = self._client.subscribe(self._sub_cur_topic)
             _LOGGER.info(
-                "Bridge state turned on. MQTT topic %s, publish code %s",
-                self._bridge_state_topic,
+                "Subscribed to retained values topic %s (%s)",
+                self._sub_cur_topic,
                 ret_val,
             )
-            self._bridge_config_topics_published = -1
+            for restore_message in self._messages_to_restore_values:
+                ret_val = self._client.publish(*restore_message)
+                _LOGGER.info(
+                    "Previous sensor values restored. Topic %s, publish code %s",
+                    restore_message[0],
+                    ret_val,
+                )
+                if self._print_payload:
+                    _LOGGER.info(
+                        "Previous sensor values restored. MQTT payload %s",
+                        restore_message[1],
+                    )
+            self._messages_to_restore_values = []
 
     def publish_value_cache_record(
         self, topic_array, topic_suffix, payload_struct, retain=False

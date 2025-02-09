@@ -1,6 +1,6 @@
 """The Chirpstack LoRaWan integration - setup."""
 from __future__ import annotations
-__version__ = "1.1.47"
+__version__ = "1.1.48"
 
 import logging
 import logging.handlers

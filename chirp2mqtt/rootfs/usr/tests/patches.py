@@ -274,6 +274,8 @@ class mqtt:
                 sub_topics = msg[0].split("/")
                 if sub_topics[-1] == "restart": # or (sub_topics[0] != "application" and sub_topics[-1] == "status"): # allowing single online message
                     self.reset_stats()
+                if sub_topics[-1] == "status" and msg[1] == "configure": # reset on configure request
+                    self.reset_stats()
                 if msg[1] != None and sub_topics[-1] in self._subscribed:
                     self.on_message(self, None, message(msg[0], msg[1], msg[2], msg[3]))
                 if sub_topics[-1] == "config" and len(sub_topics[2]) < 32:
@@ -337,7 +339,7 @@ class mqtt:
                 while True:
                     if not self._connected: break
                     if self._publish_queue.empty():
-                        if self._connected:
+                        if self._connected and not self._processing_done.is_set():
                             self._processing_done.wait()
                         break
                     time.sleep(0.1)
