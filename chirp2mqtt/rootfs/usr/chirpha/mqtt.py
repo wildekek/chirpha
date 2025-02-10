@@ -143,6 +143,8 @@ class ChirpToHA:
             }
         ]
 
+        self._wait_for_ha_online = threading.Thread(target=self.ha_online_waiter)
+
         ret_val = self._client.publish( self._initialize_topic, "initialize" )
         _LOGGER.info(
             "Initialization message published. MQTT topic %s, publish code %s",
@@ -150,16 +152,14 @@ class ChirpToHA:
             ret_val,
         )
 
-        self._wait_for_ha_online = threading.Thread(target=self.ha_online_waiter)
-
     def ha_online_waiter(self): # to start bridge if homeassistant/status message is not received within discovery timeout
         if not self._ha_online_event.wait(self._discovery_delay+0.01):
+            self._ha_online_event.set()
             ret_val = self._client.publish( self._initialize_topic, "configure" )
             _LOGGER.debug("%s timeout expired, but no HA online message received, starting bridge now (%s)", self._discovery_delay, ret_val)
 
     def start_bridge(self):
         """Start Lora bridge registration within HA MQTT."""
-        #traceback.print_stack(file=sys.stdout)
         bridge_publish_data = self.get_conf_data(
             BRIDGE_STATE_ID,
             {  #   'entities':
@@ -251,6 +251,7 @@ class ChirpToHA:
             ret_val,
         )
 
+    def reload_devices(self):
         device_sensors = self._grpc_client.get_current_device_entities()
 
         self._dev_sensor_count = 0
@@ -329,7 +330,7 @@ class ChirpToHA:
             "%s value restore requests queued", len(self._messages_to_restore_values)
         )
         _LOGGER.info(
-            "Bridge (re)start completed, %s devices and %s sensors found",
+            "Devices reloaded, %s devices and %s sensors found",
             self._dev_count,
             self._dev_sensor_count,
         )
@@ -351,27 +352,23 @@ class ChirpToHA:
         """Process subscribed messages."""
         self._last_update = datetime.datetime.now(UTC_TIMEZONE)
         if message.topic == self._bridge_state_topic:
-            _LOGGER.info("Bridge status message received ", )
+            _LOGGER.info("Bridge status message received, retain=%s ", message.retain)
         elif message.topic == self._bridge_restart_topic:
             _LOGGER.info(
                 "Restart requested, starting devices re-registration (retain=%s).",
                 message.retain,
             )
-            self.start_bridge()
+            self._bridge_config_topics_published = 0    # enables value restoration
+            self.reload_devices()
         elif message.topic == self._ha_status:
             payload = message.payload.decode("utf-8")
             if payload == "online":
                 self._ha_online_event.set()
-                if not self._ha_online_processed:
-                    ret_val = self._client.publish( self._initialize_topic, "configure" )
-                    _LOGGER.info(
-                        "HA online, starting devices registration (retain=%s).",
-                        message.retain,
-                    )
-                else:
-                    _LOGGER.info(
-                        "HA online message received, but configuration already completed.",
-                    )
+                ret_val = self._client.publish( self._initialize_topic, "configure" )
+                _LOGGER.info(
+                    "HA online, starting bridge/devices registration (retain=%s).",
+                    message.retain,
+                )
             elif payload == "offline":
                 self._ha_online_processed = False
                 self._client.subscribe(self._initialize_topic)
@@ -381,18 +378,21 @@ class ChirpToHA:
                     f"application/{self._application_id}/device/+/event/up"
                 )
                 self._client.unsubscribe(f"{self._discovery_prefix}/+/+/+/config")
+                _LOGGER.info(
+                    "HA offline message received, ready for re-initialization.",
+                )
 
         elif message.topic == self._initialize_topic:
             payload = message.payload.decode("utf-8")
             _LOGGER.info(
-                "Integration initialization message received %s %s.",
-                message.topic, payload
+                "Integration initialization message received %s.",
+                payload
             )
             if payload == "initialize":
                 self._wait_for_ha_online.start()
             elif not self._ha_online_processed: # configure
-                self._ha_online_processed = True
-                self._client.unsubscribe(self._initialize_topic)
+                #self._ha_online_processed = True
+                #self._client.unsubscribe(self._initialize_topic)
                 self._client.subscribe(self._bridge_state_topic)
                 self._client.subscribe(self._bridge_restart_topic)
                 self._client.subscribe(
@@ -400,6 +400,7 @@ class ChirpToHA:
                 )
                 self._client.subscribe(f"{self._discovery_prefix}/+/+/+/config")
                 self.start_bridge()
+                self.reload_devices()
         else:
             subtopics = message.topic.split("/")
             payload = message.payload.decode("utf-8")
@@ -496,7 +497,7 @@ class ChirpToHA:
             and self._config_topics_published >= len(self._devices_config_topics)
         ):
             _LOGGER.info(
-                "%s of %s configuration messages received, disappeared %s devices",
+                "%s of %s configuration messages received, %s disappeared devices",
                 self._config_topics_published,
                 len(self._devices_config_topics),
                 len(self._old_devices_config_topics - self._devices_config_topics),
@@ -504,7 +505,6 @@ class ChirpToHA:
             self.clean_up_disappeared()
         if self._bridge_config_topics_published == 0:
             self._bridge_config_topics_published = -1
-            self._bridge_init_completed = True
             time.sleep(self._discovery_delay)
             self._cur_open_time = time.time()
             ret_val = self._client.subscribe(self._sub_cur_topic)

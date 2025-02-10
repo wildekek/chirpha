@@ -34,8 +34,8 @@ def test_ha_status_received(caplog):
         restart = common.count_messages(r'/restart$', None, keep_history=True)    # to be received as subscribed
         config_topics = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).get_published()
         assert len(config_topics)  == configs + removals + status_online + up_msg + restart
-        assert configs == get_size("sensors") * get_size("devices") + BRIDGE_CONF_COUNT
-        assert status_online == 1
+        assert configs == get_size("sensors") * get_size("devices")
+        assert status_online == 0
         # simulate incoming values restore mqtt message. This should show up as up event for recently registered devices and
         # nothing for non-registered devices
         for i in range(
@@ -80,8 +80,8 @@ def test_ha_status_received_with_debug_log(caplog):
         restart = common.count_messages(r'/restart$', None, keep_history=True)    # to be received as subscribed
         config_topics = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).get_published()
         assert len(config_topics)  == configs + removals + status_online + up_msg + restart
-        assert configs == get_size("sensors") * get_size("devices") + BRIDGE_CONF_COUNT
-        assert status_online == 1
+        assert configs == get_size("sensors") * get_size("devices")
+        assert status_online == 0
         for i in range(
             0, mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).stat_devices + 1
         ):  # +1 to ensure message for non-registered device
@@ -290,7 +290,7 @@ def test_ha_online_rec(caplog):
         no_of_conf_msgs = common.count_messages(r'dev_eui.*/config$', f'{config[CONF_APPLICATION_ID]}', keep_history=True)    # new value come in
         assert no_ha_online == 1
         assert no_of_conf_msgs == mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).stat_sensors
-        assert "HA online, starting devices registration" in caplog.text
+        assert "HA online, starting bridge/devices registration" in caplog.text
         assert "timeout expired, but no HA online message received" not in caplog.text
 
     common.chirp_setup_and_run_test(caplog, run_test_ha_online_rec, test_params=dict(devices=1, codec=0), conf_file=WITH_DELAY_CONFIGURATION_FILE, allowed_msg_level=logging.WARNING)

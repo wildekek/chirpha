@@ -142,3 +142,8 @@ def check_for_no_registration(config):
     """Check for no mqtt registration messages with assertion."""
     sensor_configs = count_messages(r'/config', r'"via_device": "chirp2mqtt_bridge_', keep_history=True)
     assert sensor_configs == 0  #   check for 0 devices/sensors registered
+
+# #!/bin/bash
+# json='{"access_token":"kjdshfsd", "key2":"value"}'
+#
+# echo $json | grep -o '"access_token":"[^"]*' | grep -o '[^"]*$'

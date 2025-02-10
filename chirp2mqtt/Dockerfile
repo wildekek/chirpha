@@ -25,7 +25,6 @@ RUN \
     && sed -i 's/^\(dir .*\)$/# \1\ndir \/data\/redis/' /etc/redis.conf \
     && sed -i 's/^\(logfile .*\)$/# \1/' /etc/redis.conf \
     && sed -i 's/loglevel notice/loglevel warning/' /etc/redis.conf \
-    && echo -e "vm.overcommit_memory = 1\n" >> /etc/sysctl.conf \
     && mkdir -p "$PGDATA" && chown -R postgres:postgres "$PGDATA" && chmod 1777 "$PGDATA" \
     && if [[ "$BUILD_ARCH" = "amd64" ]]; then wget -c https://artifacts.chirpstack.io/downloads/chirpstack/chirpstack_${CHIRPSTACK_VERSION}_postgres_linux_amd64.tar.gz -O - | tar -xz;  fi \
     && if [[ "$BUILD_ARCH" = "amd64" ]]; then wget -c https://artifacts.chirpstack.io/downloads/chirpstack-gateway-bridge/chirpstack-gateway-bridge_${CHIRPSTACK_GATEWAY_BRIDGE_VERSION}_linux_amd64.tar.gz -O - | tar -xz;  fi \

@@ -31,3 +31,7 @@
 ## 1.1.119
 
 - Tests extension and minor fixes in code, file cleanup
+
+## 1.1.122
+
+- Initialization re-factoring(2)
