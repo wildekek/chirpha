@@ -292,7 +292,7 @@ def test_ha_online_rec(caplog):
         no_of_conf_msgs = common.count_messages(r'dev_eui.*/config$', f'{config[CONF_APPLICATION_ID]}', keep_history=True)    # new value come in
         assert no_ha_online == 1
         assert no_of_conf_msgs == mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).stat_sensors
-        assert "HA online, starting bridge/devices registration" in caplog.text
+        assert "HA online, publishing bridge setup 'configure' message" in caplog.text
         assert "timeout expired, but no HA online message received" not in caplog.text
 
     common.chirp_setup_and_run_test(caplog, run_test_ha_online_rec, test_params=dict(devices=1, codec=0), conf_file=WITH_DELAY_CONFIGURATION_FILE, allowed_msg_level=logging.WARNING)

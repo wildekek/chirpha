@@ -209,6 +209,8 @@ class ChirpGrpc:
             )
             mac_version = (mac_version.replace("_", " ", 1)).replace("_", ".")
             discovery["dev_conf"] = {
+                "uplink_interval": profile.device_profile.uplink_interval,
+                "device_status_req_interval": profile.device_profile.device_status_req_interval,
                 "sw_version": mac_version,
                 "dev_eui": device.dev_eui,
                 "dev_name": device.name,

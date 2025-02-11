@@ -64,6 +64,17 @@ def generate_unique_id(configuration):
     unique_id = f"{hashlib.md5(u_id.encode('utf-8')).hexdigest()}"
     return unique_id
 
+def convert_ret_val(ret_val):
+    if isinstance(ret_val, tuple):
+        if ret_val[0]:
+            return f", return code ({ret_val[0]},{ret_val[1]})"
+        else:
+            return ""
+    else:
+        if ret_val.rc:
+            return f", return code ({ret_val.rc},{ret_val.mid})"
+        else:
+            return ""
 
 class ChirpToHA:
     """Chirpstack LoRaWan MQTT interface."""
@@ -126,11 +137,6 @@ class ChirpToHA:
         )
         self._client.on_message = self.on_message
 
-        self._bridge_init_time = time.time()
-        _LOGGER.info(
-            "Bridge initialization time stamp %s",
-            self._bridge_init_time,
-        )
         self._client.subscribe(self._initialize_topic)
         self._client.subscribe(self._ha_status)
         self._availability_element = [
@@ -146,9 +152,8 @@ class ChirpToHA:
 
         ret_val = self._client.publish( self._initialize_topic, "initialize" )
         _LOGGER.info(
-            "Initialization message published. MQTT topic %s, publish code %s",
-            self._initialize_topic,
-            ret_val,
+            "Bridge setup 'initialize' message published%s",
+            convert_ret_val(ret_val),
         )
 
     def on_connect(self, client, userdata, connect_flags, reason_code, properties):
@@ -161,10 +166,16 @@ class ChirpToHA:
         if not self._ha_online_event.wait(self._discovery_delay+0.1):
             self._ha_online_event.set()
             ret_val = self._client.publish( self._initialize_topic, "configure" )
-            _LOGGER.debug("%s timeout expired, but no HA online message received, starting bridge now (%s)", self._discovery_delay, ret_val)
+            _LOGGER.debug("%s timeout expired, but no HA online message received, bridge setup 'configure' message published%s",
+                          self._discovery_delay, convert_ret_val(ret_val))
 
     def start_bridge(self):
         """Start Lora bridge registration within HA MQTT."""
+        self._bridge_init_time = time.time()
+        _LOGGER.info(
+            "Bridge initialization time stamp set to %s",
+            self._bridge_init_time,
+        )
         bridge_publish_data = self.get_conf_data(
             BRIDGE_STATE_ID,
             {  #   'entities':
@@ -201,9 +212,8 @@ class ChirpToHA:
             retain=True,
         )
         _LOGGER.debug(
-            "Bridge device configuration published. MQTT topic %s, publish code %s",
-            bridge_publish_data["discovery_topic"],
-            ret_val,
+            "Bridge device configuration published%s",
+            convert_ret_val(ret_val),
         )
         if self._print_payload:
             _LOGGER.debug(
@@ -251,9 +261,8 @@ class ChirpToHA:
             self._bridge_state_topic, '{"state": "online"}', retain=True
         )
         _LOGGER.info(
-            "Bridge state turned on. MQTT topic %s, publish code %s",
-            self._bridge_state_topic,
-            ret_val,
+            "Bridge state turned on%s",
+            convert_ret_val(ret_val),
         )
 
     def reload_devices(self):
@@ -290,9 +299,8 @@ class ChirpToHA:
                     retain=True,
                 )
                 _LOGGER.info(
-                    "Device sensor discovery message published. MQTT topic %s, publish code %s",
-                    sensor_entity_conf_data["discovery_topic"],
-                    ret_val,
+                    f"Device {dev_eui} sensor '{sensor_entity_conf_data["discovery_topic"].split("/")[1]}' discovery message published%s",
+                    convert_ret_val(ret_val),
                 )
                 if self._print_payload:
                     _LOGGER.debug(
@@ -332,10 +340,10 @@ class ChirpToHA:
         _LOGGER.debug("Top level names %s", self._top_level_msg_names)
 
         _LOGGER.info(
-            "%s value restore requests queued", len(self._messages_to_restore_values)
+            "%s value(s) restore request(s) queued", len(self._messages_to_restore_values)
         )
         _LOGGER.info(
-            "Devices reloaded, %s devices and %s sensors found",
+            "Devices reloaded, %s device{s) and %s sensor(s) found",
             self._dev_count,
             self._dev_sensor_count,
         )
@@ -348,7 +356,7 @@ class ChirpToHA:
             ):
                 ret_val = self._client.publish(config_topic, None, retain=True)
                 _LOGGER.info(
-                    "Removing retained topic %s, publish code %s", config_topic, ret_val
+                    "Removing retained topic %s%s", config_topic, convert_ret_val(ret_val)
                 )
         self._old_devices_config_topics = self._devices_config_topics
         self._config_topics_published = 0
@@ -371,7 +379,7 @@ class ChirpToHA:
                 self._ha_online_event.set()
                 ret_val = self._client.publish( self._initialize_topic, "configure" )
                 _LOGGER.info(
-                    "HA online, starting bridge/devices registration (retain=%s).",
+                    "HA online, publishing bridge setup 'configure' message (retain=%s)",
                     message.retain,
                 )
             elif payload == "offline":
@@ -382,7 +390,7 @@ class ChirpToHA:
         elif message.topic == self._initialize_topic:
             payload = message.payload.decode("utf-8")
             _LOGGER.info(
-                "Integration initialization message received %s.",
+                "Bridge setup '%s' message received",
                 payload
             )
             if payload == "initialize":
@@ -408,7 +416,7 @@ class ChirpToHA:
                         and payload_struct["device"]["via_device"]
                         == self._bridge_indentifier
                     ):
-                        _LOGGER.info("MQTT registration message received: MQTT topic %s, time stamp %s.", message.topic, time_stamp)
+                        _LOGGER.info(f"Registration message received for device {subtopics[2]} sensor {subtopics[1]} with time stamp {time_stamp}")
                         if self._print_payload:
                             _LOGGER.debug(
                                 "MQTT registration message received: MQTT payload %s", payload
@@ -438,9 +446,9 @@ class ChirpToHA:
                         if dev_eui not in self._values_cache:
                             ret_val = self._client.publish(message.topic, None, retain=True)
                             _LOGGER.debug(
-                                "Value cache removal topic %s published with code %s",
+                                "Value cache removal topic %s published%s",
                                 message.topic,
-                                ret_val,
+                                convert_ret_val(ret_val),
                             )
                         elif self._values_cache[dev_eui] == {}:
                             self._values_cache[dev_eui] = self.join_filtered_messages(
@@ -452,16 +460,18 @@ class ChirpToHA:
                     cache_not_retrieved = len(
                         [dev_id for dev_id, val in self._values_cache.items() if val == {}]
                     )
-                    _LOGGER.debug("MQTT nonprocessed device ids %s", cache_not_retrieved)
+                    _LOGGER.debug("Number of not processed devices ids %s", cache_not_retrieved)
                     if (
                         time.time() - self._cur_open_time >= self._cur_age
                         or cache_not_retrieved == 0
                     ):
                         ret_val = self._client.unsubscribe(self._sub_cur_topic)
                         _LOGGER.info(
-                            "MQTT unsubscribed from %s(%s)(%s)(%s)",
-                            self._sub_cur_topic,
-                            ret_val,
+                            "Unsubscribed from retained values topic%s",
+                            convert_ret_val(ret_val),
+                        )
+                        _LOGGER.debug(
+                            "Not processed retained devices %s, processing age %s(s)",
                             cache_not_retrieved,
                             time.time() - self._cur_open_time,
                         )
@@ -481,7 +491,7 @@ class ChirpToHA:
                         )
             else:
                 _LOGGER.info(
-                    "MQTT ignoring topic %s with payload %s",
+                    "Ignoring topic %s with payload %s",
                     message.topic,
                     message.payload,
                 )
@@ -503,16 +513,14 @@ class ChirpToHA:
             self._cur_open_time = time.time()
             ret_val = self._client.subscribe(self._sub_cur_topic)
             _LOGGER.info(
-                "Subscribed to retained values topic %s (%s)",
-                self._sub_cur_topic,
-                ret_val,
+                "Subscribed to retained values topic%s",
+                convert_ret_val(ret_val),
             )
             for restore_message in self._messages_to_restore_values:
                 ret_val = self._client.publish(*restore_message)
                 _LOGGER.info(
-                    "Previous sensor values restored. Topic %s, publish code %s",
-                    restore_message[0],
-                    ret_val,
+                    f"Previous sensor values restored for device {restore_message[0].split('/')[3]}%s",
+                    convert_ret_val(ret_val),
                 )
                 if self._print_payload:
                     _LOGGER.info(
@@ -533,15 +541,14 @@ class ChirpToHA:
             publish_topic, json.dumps(payload_struct), retain=retain
         )
         _LOGGER.debug(
-            "MQTT cached values related topic %s published with code %s",
-            publish_topic,
-            ret_val,
+            f"Cached values published for device {publish_topic.split("/")[3]}%s",
+            convert_ret_val(ret_val),
         )
         if self._print_payload:
             _LOGGER.debug(
-                "MQTT cached values related MQTT payload %s published with code %s",
+                "Cached values related MQTT payload %s published with code %s",
                 payload_struct,
-                ret_val,
+                convert_ret_val(ret_val),
             )
         return ret_val
 

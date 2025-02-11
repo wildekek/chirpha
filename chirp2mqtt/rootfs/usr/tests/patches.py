@@ -245,7 +245,10 @@ class mqtt:
             self._publish_queue.put((topic, payload, qos, retain))
             self._publish_count += 1
             self._published.append((topic, payload, qos, retain))
-            return (0, self._publish_count)
+            ret_val = lambda: None
+            ret_val.rc = 0 if get_size("publish") else 1
+            ret_val.mid = self._publish_count
+            return ret_val
 
         def loop_start(self):
             """Mock loop_start function."""
@@ -536,6 +539,9 @@ class api:
             request = lambda: None
             request.device_profile = lambda: None
             request.device_profile.id = deviceProfileReq.id
+            request.device_profile.uplink_interval = 17
+            request.device_profile.device_status_req_interval = 71
+
             request.device_profile.measurements = {}
             if get_size("codec") < 0:
                 request.device_profile.payload_codec_script = ""

@@ -37,5 +37,5 @@ def test_empty_message(caplog):
     common.chirp_setup_and_run_test(caplog, run_test_empty_message)
     i_sensor_warn = 0
     for record in caplog.records:
-        if "MQTT ignoring topic " in record.msg: i_sensor_warn += 1
+        if "Ignoring topic" in record.msg: i_sensor_warn += 1
     assert i_sensor_warn == 1
