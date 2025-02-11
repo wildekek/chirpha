@@ -9,8 +9,6 @@ import hashlib
 import threading
 import time
 from zoneinfo import ZoneInfo
-import traceback
-import sys
 
 import paho.mqtt.client as mqtt
 
@@ -89,6 +87,8 @@ class ChirpToHA:
         self._last_update = None
         self._discovery_prefix = self._config.get(CONF_MQTT_DISC)
         self._client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+
+        self._client.on_connect = self.on_connect
         self._client.username_pw_set(self._user, self._pwd)
         self._client.connect(self._host, self._port)
         self._origin = {
@@ -98,7 +98,6 @@ class ChirpToHA:
         self._bridge_indentifier = to_lower_case_no_blanks(
             f"{BRIDGE_VENDOR} {BRIDGE} {self._unique_id}"
         )
-        self._ha_online_processed = False
         self._ha_online_event = threading.Event()
         self._bridge_init_time = None
         self._cur_open_time = None
@@ -152,8 +151,14 @@ class ChirpToHA:
             ret_val,
         )
 
+    def on_connect(self, client, userdata, connect_flags, reason_code, properties):
+        if reason_code.is_failure:
+            raise Exception(f"MQTT connection failed: {reason_code.value} - '{reason_code}'")
+        else:
+            self._client.on_connect = None
+
     def ha_online_waiter(self): # to start bridge if homeassistant/status message is not received within discovery timeout
-        if not self._ha_online_event.wait(self._discovery_delay+0.01):
+        if not self._ha_online_event.wait(self._discovery_delay+0.1):
             self._ha_online_event.set()
             ret_val = self._client.publish( self._initialize_topic, "configure" )
             _LOGGER.debug("%s timeout expired, but no HA online message received, starting bridge now (%s)", self._discovery_delay, ret_val)
@@ -370,14 +375,6 @@ class ChirpToHA:
                     message.retain,
                 )
             elif payload == "offline":
-                self._ha_online_processed = False
-                self._client.subscribe(self._initialize_topic)
-                self._client.unsubscribe(self._bridge_state_topic)
-                self._client.unsubscribe(self._bridge_restart_topic)
-                self._client.unsubscribe(
-                    f"application/{self._application_id}/device/+/event/up"
-                )
-                self._client.unsubscribe(f"{self._discovery_prefix}/+/+/+/config")
                 _LOGGER.info(
                     "HA offline message received, ready for re-initialization.",
                 )
@@ -390,9 +387,7 @@ class ChirpToHA:
             )
             if payload == "initialize":
                 self._wait_for_ha_online.start()
-            elif not self._ha_online_processed: # configure
-                #self._ha_online_processed = True
-                #self._client.unsubscribe(self._initialize_topic)
+            else: # configure
                 self._client.subscribe(self._bridge_state_topic)
                 self._client.subscribe(self._bridge_restart_topic)
                 self._client.subscribe(
@@ -481,7 +476,6 @@ class ChirpToHA:
                             payload_struct,
                             self._top_level_msg_names,
                         )
-                        # _LOGGER.error("%s joined1 (o) payload %s", dev_eui, self._values_cache[dev_eui])
                         ret_val = self.publish_value_cache_record(
                             subtopics, "cur", self._values_cache[dev_eui], retain=True
                         )

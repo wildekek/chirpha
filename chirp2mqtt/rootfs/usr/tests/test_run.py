@@ -7,7 +7,9 @@ from chirpha.const import BRIDGE_CONF_COUNT, CONF_APPLICATION_ID
 from tests import common
 
 from .patches import get_size, mqtt, set_size
-from tests.common import PAYLOAD_PRINT_CONFIGURATION_FILE, REGULAR_CONFIGURATION_FILE, REGULAR_CONFIGURATION_FILE_INFO, REGULAR_CONFIGURATION_FILE_ERROR, CONF_MQTT_DISC, WITH_DELAY_CONFIGURATION_FILE
+from tests.common import PAYLOAD_PRINT_CONFIGURATION_FILE, REGULAR_CONFIGURATION_FILE, REGULAR_CONFIGURATION_FILE_INFO
+from tests.common import REGULAR_CONFIGURATION_FILE_ERROR, CONF_MQTT_DISC, WITH_DELAY_CONFIGURATION_FILE
+from tests.common import REGULAR_CONFIGURATION_FILE_INFO_NO_MQTT, REGULAR_CONFIGURATION_FILE_DEBUG_NO_MQTT
 
 #   su-exec postgres psql
 #   \c chirpstack
@@ -294,3 +296,33 @@ def test_ha_online_rec(caplog):
         assert "timeout expired, but no HA online message received" not in caplog.text
 
     common.chirp_setup_and_run_test(caplog, run_test_ha_online_rec, test_params=dict(devices=1, codec=0), conf_file=WITH_DELAY_CONFIGURATION_FILE, allowed_msg_level=logging.WARNING)
+
+def test_no_mqtt_short_error_message(caplog):
+    """Test payload join for array data with more than 1 sublevel."""
+
+    def run_test_no_mqtt_short_error_message(config):
+        mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).wait_empty_queue()
+        config_topics = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).get_published(keep_history=True)
+        no_ha_online = common.count_messages(r'^homeassistant/status$', r"online", keep_history=True)    # to be received as subscribed
+        no_of_conf_msgs = common.count_messages(r'dev_eui.*/config$', f'{config[CONF_APPLICATION_ID]}', keep_history=True)    # new value come in
+        assert no_ha_online == 1
+        assert no_of_conf_msgs == mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).stat_sensors
+        assert "Chirp failed:" in caplog.text
+        assert "Traceback (most recent call last):" not in caplog.text
+
+    common.chirp_setup_and_run_test(caplog, run_test_no_mqtt_short_error_message, test_params=dict(mqtt=0, devices=1, codec=0), conf_file=REGULAR_CONFIGURATION_FILE_INFO_NO_MQTT, allowed_msg_level=logging.ERROR, a_live_at_end=False)
+
+def test_no_mqtt_long_error_message(caplog):
+    """Test payload join for array data with more than 1 sublevel."""
+
+    def run_test_no_mqtt_long_error_message(config):
+        mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).wait_empty_queue()
+        config_topics = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).get_published(keep_history=True)
+        no_ha_online = common.count_messages(r'^homeassistant/status$', r"online", keep_history=True)    # to be received as subscribed
+        no_of_conf_msgs = common.count_messages(r'dev_eui.*/config$', f'{config[CONF_APPLICATION_ID]}', keep_history=True)    # new value come in
+        assert no_ha_online == 1
+        assert no_of_conf_msgs == mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).stat_sensors
+        assert "Chirp failed:" in caplog.text
+        assert "Traceback (most recent call last):" in caplog.text
+
+    common.chirp_setup_and_run_test(caplog, run_test_no_mqtt_long_error_message, test_params=dict(mqtt=0, devices=1, codec=0), conf_file=REGULAR_CONFIGURATION_FILE_DEBUG_NO_MQTT, allowed_msg_level=logging.ERROR, a_live_at_end=False)

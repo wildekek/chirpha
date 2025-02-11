@@ -205,6 +205,7 @@ class mqtt:
         _connected = False
         _processing_done = threading.Event()
         on_message = None
+        on_connect = None
         on_publish = None
         _stat_start_time = 0
         _stat_dev_eui = None
@@ -226,11 +227,8 @@ class mqtt:
 
         def connect(self, host, port):
             """Mock connect function, raise exception if requested."""
-            if not get_size("mqtt"):
-                raise Exception("Could not connect to mqtt server") # pylint: disable=broad-exception-raised
             self._published = []
             self._subscribed = set()
-            self.on_message = None
             self.on_publish = None
             self._stat_start_time = 0
             self._stat_dev_eui = None
@@ -255,6 +253,11 @@ class mqtt:
 
         def loop_forever(self):
             """Mock loop_forever function."""
+            if self.on_connect:
+                reason_code = lambda: None
+                reason_code.is_failure = get_size("mqtt")==0
+                reason_code.value = 135
+                self.on_connect(None, None, None, reason_code, None)
             thread = threading.Thread(target=self._loop_forever)
             thread.start()
             thread.join()
@@ -276,7 +279,7 @@ class mqtt:
                     self.reset_stats()
                 if sub_topics[-1] == "status" and msg[1] == "configure": # reset on configure request
                     self.reset_stats()
-                if msg[1] != None and sub_topics[-1] in self._subscribed:
+                if self.on_message and msg[1] != None and sub_topics[-1] in self._subscribed:
                     self.on_message(self, None, message(msg[0], msg[1], msg[2], msg[3]))
                 if sub_topics[-1] == "config" and len(sub_topics[2]) < 32:
                     payload_struct = json.loads(msg[1]) if msg[1] and len(msg[1]) > 0 else None

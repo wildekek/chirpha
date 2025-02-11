@@ -1,6 +1,6 @@
 """The Chirpstack LoRaWan integration - setup."""
 from __future__ import annotations
-__version__ = "1.1.48"
+__version__ = "1.1.49"
 
 import logging
 import logging.handlers
@@ -67,7 +67,10 @@ class run_chirp_ha:
 
             self._mqtt_client._client.loop_forever()
         except Exception as error:
-            _LOGGER.exception("Chirp failed: %s", str(error))
+            if log_level == logging.DEBUG:
+                _LOGGER.exception("Chirp failed: %s", str(error))
+            else:
+                _LOGGER.error("Chirp failed: %s", str(error))
         finally:
             if self._mqtt_client:
                 _LOGGER.info("Closing MQTT connection")

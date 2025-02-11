@@ -23,6 +23,8 @@ REGULAR_CONFIGURATION_FILE_ERROR ="test_configuration_error_log.json"
 PAYLOAD_PRINT_CONFIGURATION_FILE ="test_configuration_payload.json"
 NO_APP_CONFIGURATION_FILE ="test_configuration_no_app.json"
 WITH_DELAY_CONFIGURATION_FILE ="test_configuration_delay.json"
+REGULAR_CONFIGURATION_FILE_INFO_NO_MQTT ="test_configuration_info_log_no_mqtt.json"
+REGULAR_CONFIGURATION_FILE_DEBUG_NO_MQTT ="test_configuration_debug_log_no_mqtt.json"
 
 # pytest tests/components/chirp/
 # pytest tests/components/chirp/ --cov=homeassistant.components.chirp --cov-report term-missing -vv
@@ -83,8 +85,7 @@ def chirp_setup_and_run_test(caplog, run_test_case, conf_file=REGULAR_CONFIGURAT
                         mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).wait_empty_queue()
                         if bridge_online == 1: break
                         time.sleep(0.1)
-                    #print("ooooooo ", no_ha_online, i, ha_online, 1 if not no_ha_online else 0)
-                    #if not no_ha_online:
+                    #print("ooooooo ", no_ha_online, i, ha_online, 1 if not no_ha_online else 0, bridge_config, bridge_online, config_topics)
                     assert ha_online == (1 if not no_ha_online else 0)   # 1 message conditionally sent from test environment
                     assert bridge_config == 2
                     assert bridge_online == 1
