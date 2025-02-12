@@ -20,6 +20,7 @@ from .patches import api, message, mqtt, set_size, get_size, insecure_channel
 REGULAR_CONFIGURATION_FILE ="test_configuration.json"
 REGULAR_CONFIGURATION_FILE_INFO ="test_configuration_info_log.json"
 REGULAR_CONFIGURATION_FILE_ERROR ="test_configuration_error_log.json"
+REGULAR_CONFIGURATION_FILE_WRONG_LOG_LEVEL ="test_configuration_wrong_log_level.json"
 PAYLOAD_PRINT_CONFIGURATION_FILE ="test_configuration_payload.json"
 NO_APP_CONFIGURATION_FILE ="test_configuration_no_app.json"
 WITH_DELAY_CONFIGURATION_FILE ="test_configuration_delay.json"
@@ -67,8 +68,10 @@ def chirp_setup_and_run_test(caplog, run_test_case, conf_file=REGULAR_CONFIGURAT
 
     set_size(**test_params)
     mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).get_published()
+    log_level_mapping = logging.getLevelNamesMapping()
+    log_level = log_level_mapping.get(config['log_level'].upper(), logging.INFO)
     with run_chirp_ha(full_path_to_conf_file) as ch:
-        caplog.set_level(config['log_level'].upper())
+        caplog.set_level(log_level)
         time.sleep(0.01)
         if ch.ch_tread.is_alive():
             mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).wait_empty_queue()

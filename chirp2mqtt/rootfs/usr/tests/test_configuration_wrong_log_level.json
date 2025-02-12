@@ -6,9 +6,5 @@
     "options_start_delay": 0,
     "options_restore_age": 0,
     "options_debug_print_payload": false,
-    "log_level": "debugx",
-    "chirpstack_api_server": "picam2",
-    "server_port": 8080,
-    "mqtt_server": "picam2",
-    "mqtt_port": 1883
+    "log_level": "xdebugx"
 }

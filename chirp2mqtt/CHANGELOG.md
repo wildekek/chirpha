@@ -32,6 +32,6 @@
 
 - Tests extension and minor fixes in code, file cleanup
 
-## 1.1.123
+## 1.1.125
 
-- Initialization re-factoring(3)
+- Initialization re-factoring(5), fixed issue with log level

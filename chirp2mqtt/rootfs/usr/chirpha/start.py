@@ -1,6 +1,6 @@
 """The Chirpstack LoRaWan integration - setup."""
 from __future__ import annotations
-__version__ = "1.1.49"
+__version__ = "1.1.50"
 
 import logging
 import logging.handlers
@@ -48,7 +48,8 @@ class run_chirp_ha:
             self._mqtt_client = None
 
     def main(self):
-        logging.basicConfig(level=logging.INFO, format=FMT, datefmt=FORMAT_DATETIME) #, handlers=[logging.handlers.SysLogHandler()])
+        logging.basicConfig(level=logging.INFO, format=FMT, datefmt=FORMAT_DATETIME)
+        log_level_mapping = logging.getLevelNamesMapping()
         config = None
         try:
             module_dir = Path(globals().get("__file__", "./_")).absolute().parent
@@ -58,10 +59,16 @@ class run_chirp_ha:
             self._config = config
             with open(str(module_dir)+'/classes.json', 'r') as file:
                 classes = json.load(file)
-            log_level = logging._nameToLevel.get(config['log_level'].upper(),logging.INFO)
-            logging.basicConfig(level=log_level, format=FMT, datefmt=FORMAT_DATETIME)
+            log_level = log_level_mapping.get(config['log_level'].upper(), None)
+            if not log_level:
+                log_level = logging.INFO
+                config['log_level'] = 'info'
+                _LOGGER.warning("Wrong log level specified '%s', assuming 'info'", config['log_level'])
+            logging.getLogger().setLevel(log_level)
             _LOGGER.info("ChirpHA started")
-            _LOGGER.debug("Logging level %s(%s), current directory %s, module directory %s", config['log_level'].upper(), log_level, os.getcwd(), module_dir)
+            _LOGGER.debug("Logging level %s(%s)", config['log_level'].upper(), log_level)
+            _LOGGER.debug("Current directory %s, module directory %s", os.getcwd(), module_dir)
+            _LOGGER.debug("Configuration file %s", self._configuration_file)
             _LOGGER.info("Version %s", __version__)
             self._grpc_client = ChirpGrpc(config, __version__)
             self._mqtt_client = ChirpToHA(config, __version__, classes, self._grpc_client)

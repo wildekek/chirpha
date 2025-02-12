@@ -171,7 +171,6 @@ class ChirpToHA:
 
     def start_bridge(self):
         """Start Lora bridge registration within HA MQTT."""
-        self._bridge_init_time = time.time()
         _LOGGER.info(
             "Bridge initialization time stamp set to %s",
             self._bridge_init_time,
@@ -266,6 +265,8 @@ class ChirpToHA:
         )
 
     def reload_devices(self):
+        self._bridge_init_time = time.time()
+
         device_sensors = self._grpc_client.get_current_device_entities()
 
         self._dev_sensor_count = 0
@@ -299,7 +300,7 @@ class ChirpToHA:
                     retain=True,
                 )
                 _LOGGER.info(
-                    f"Device {dev_eui} sensor '{sensor_entity_conf_data["discovery_topic"].split("/")[1]}' discovery message published%s",
+                    f"Discovery message published: device {dev_eui} sensor '{sensor_entity_conf_data["discovery_topic"].split("/")[1]}'%s",
                     convert_ret_val(ret_val),
                 )
                 if self._print_payload:
@@ -416,7 +417,7 @@ class ChirpToHA:
                         and payload_struct["device"]["via_device"]
                         == self._bridge_indentifier
                     ):
-                        _LOGGER.info(f"Registration message received for device {subtopics[2]} sensor {subtopics[1]} with time stamp {time_stamp}")
+                        _LOGGER.info(f"Registration message with time stamp {time_stamp} received for device {subtopics[2]} sensor {subtopics[1]}")
                         if self._print_payload:
                             _LOGGER.debug(
                                 "MQTT registration message received: MQTT payload %s", payload
@@ -430,11 +431,11 @@ class ChirpToHA:
                         self._bridge_config_topics_published -= 1
                 elif subtopics[-1] == "cur":
                     dev_eui = subtopics[-3]
-                    _LOGGER.info("MQTT cached values received topic %s", message.topic)
+                    _LOGGER.info("Cached values received for device %s", dev_eui)
                     if self._print_payload:
-                        _LOGGER.debug("MQTT cached values received MQTT payload %s", payload)
+                        _LOGGER.debug("Cached values received MQTT payload %s", payload)
                     _LOGGER.debug(
-                        "MQTT cached values received payload time %s, bridge time %s, cached object %s, value cache %s",
+                        "Cached values payload time %s, bridge time %s, cached object %s, value cache %s",
                         time_stamp,
                         self._bridge_init_time,
                         payload_struct.get("object"),
@@ -460,7 +461,7 @@ class ChirpToHA:
                     cache_not_retrieved = len(
                         [dev_id for dev_id, val in self._values_cache.items() if val == {}]
                     )
-                    _LOGGER.debug("Number of not processed devices ids %s", cache_not_retrieved)
+                    _LOGGER.debug("%s devices cached values not processed", cache_not_retrieved)
                     if (
                         time.time() - self._cur_open_time >= self._cur_age
                         or cache_not_retrieved == 0
@@ -523,7 +524,7 @@ class ChirpToHA:
                     convert_ret_val(ret_val),
                 )
                 if self._print_payload:
-                    _LOGGER.info(
+                    _LOGGER.debug(
                         "Previous sensor values restored. MQTT payload %s",
                         restore_message[1],
                     )
