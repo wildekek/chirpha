@@ -32,8 +32,9 @@ mqtt_password: ploramqtt
 discovery_prefix: homeassistant
 options_start_delay: 2
 options_restore_age: 4
-options_debug_print_payload: false
-log_level: info
+options_online_per_device: 0
+options_log_level: info
+database_actions: None
 ```
 
 ### Option: `application_id` (optional)
@@ -68,15 +69,21 @@ Time period in seconds to wait for device to show up for sensor value restoratio
 
 Default value: 4 .
 
-### Option: `options_debug_print_payload` (optional)
+### Option: `options_log_level`
 
-Controls topic payload logging level.
+Python management application log level, one of 'critical', 'fatal', 'critical', 'error', 'warning', 'info', 'debug', 'detail' .
 
-Default value: 'false' .
+Default value: 'info' .
 
-### Option: `log_level`
+### Option: `options_online_per_device`
 
-Python management application log level, one of 'critical', 'fatal', 'critical', 'error', 'warning', 'info', 'debug' .
+Time period in minutes used for device online checks. 0 value disables online checks and device is considered online all the time.
+
+Default value: 0 .
+
+### Option: `database_actions`
+
+ChirpStack database actions, one of 'None', 'Backup', 'Restore', 'Backup and restore' . 'Backup' - add-on takes database backup and stores it in /share/chirp2mqtt/chirp_db file and freeze execution. 'Restore' - restores database from /share/chirp2mqtt/chirp_db, renames backup file to chirp_db.restored and add-on continues service. 'Backup and restore' combines both 'Backup' and 'Restore': firstly applied creates backup file and stops; on second add-on start restores database and continues service. Last option might be handy to switch between add-on builds with different versions of Postgresql.
 
 Default value: 'info' .
 

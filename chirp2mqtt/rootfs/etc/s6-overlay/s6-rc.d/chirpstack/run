@@ -3,17 +3,69 @@
 #set -x
 
 INITIALIZED="/data/chirpstack_tables_initialized"
+BACKUPDONE="/data/chirpstack_backup_done"
+EXTPATH="/share/chirp2mqtt"
+DBFILE="chirp_db"
+CONFILE="/data/options.json"
 
-if [ -f "/share/chirp2mqtt/chirp_db" ]; then
-    su-exec postgres psql -c "drop database if exists chirpstack;"
-    su-exec postgres psql -c "drop role if exists chirpstack;"
-    su-exec postgres psql -c "create role chirpstack with login password 'chirpstack';"
-    su-exec postgres psql -c "create database chirpstack with owner chirpstack;"
-    su-exec postgres psql -d chirpstack < /share/chirp2mqtt/chirp_db >/dev/null
-    if [[ $? -eq 0 ]]; then
-        touch $INITIALIZED
-        mv /share/chirp2mqtt/chirp_db /share/chirp2mqtt/chirp_db.restored
+backup_db() {
+    if ! [ -d "$EXTPATH" ]; then
+        mkdir $EXTPATH
+        chown postgres:postgres $EXTPATH
     fi
+    su-exec postgres pg_dump chirpstack  -w > $EXTPATH/$DBFILE
+    if [ $? -eq 0 ]; then
+        echo Backup done to $EXTPATH/$DBFILE, waiting for add-on restart
+        touch $BACKUPDONE
+        while true
+        do
+            sleep 300
+        done
+    else
+        echo Backup failed, check logs
+    fi
+}
+
+restore_db() {
+    if [ -f "$EXTPATH/$DBFILE" ]; then
+        su-exec postgres psql -c "drop database if exists chirpstack;"
+        su-exec postgres psql -c "drop role if exists chirpstack;"
+        su-exec postgres psql -c "create role chirpstack with login password 'chirpstack';"
+        su-exec postgres psql -c "create database chirpstack with owner chirpstack;"
+        su-exec postgres psql -d chirpstack < $EXTPATH/$DBFILE >/dev/null
+        if [[ $? -eq 0 ]]; then
+            touch $INITIALIZED
+            mv $EXTPATH/$DBFILE $EXTPATH/$DBFILE.restored
+            echo Database restored, backup file renamed to $DBFILE.restored
+        else
+            echo Database restored failed, check logs for details
+        fi
+    else
+        echo Database backup file $EXTPATH/$DBFILE could not be processed
+    fi
+}
+
+grep '"database_actions".*:.*"Backup and restore"' $CONFILE
+if [ $? -eq 0 ]; then
+    if [ -f "$BACKUPDONE" ]; then
+        restore_db
+    else
+        backup_db
+    fi
+fi
+
+if [ -f "$BACKUPDONE" ]; then
+    rm $BACKUPDONE
+fi
+
+grep '"database_actions".*:.*"Restore"' $CONFILE
+if [ $? -eq 0 ]; then
+    restore_db
+fi
+
+grep '"database_actions".*:.*"Backup"' $CONFILE
+if [ $? -eq 0 ]; then
+    backup_db
 fi
 
 if ! [ -f "$INITIALIZED" ]; then
@@ -33,12 +85,13 @@ if ! [ -f "$INITIALIZED" ]; then
 fi
 
 #chirpstack -c /etc/chirpstack
-if [ -d "/share/chirp2mqtt/etc/chirpstack" ]; then
-    cp /share/chirp2mqtt/etc/chirpstack/* /etc/chirpstack
+if [ -d "$EXTPATH/etc/chirpstack" ]; then
+    cp $EXTPATH/etc/chirpstack/* /etc/chirpstack
 fi
 
 #ls /package/admin/s6-overlay/command/with-contenv -l
 #bashio /usr/local/bin/upd_chirpstack_conf
+su-exec postgres psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --no-password --no-psqlrc -f /etc/delete_ha_api_keys.sql
 
 signal_chirpstack &
 chirpstack -c /etc/chirpstack

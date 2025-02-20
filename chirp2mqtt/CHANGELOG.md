@@ -1,37 +1,21 @@
 <!-- https://developers.home-assistant.io/docs/add-ons/presentation#keeping-a-changelog -->
 
-## 1.1.102
+## +1.1.102
 
 - Initial release
 
-## 1.1.104
+## 1.1.108
 
-- Added MQTT server naming requirements to documentation
+- Added MQTT server naming requirements to documentation. Added payload checks. Fixed MQTT server IP naming in region description file. Upgrade to ghcr.io/hassio-addons/base:17.1.0, CHIRPSTACK_VERSION: 4.11.0
 
-## 1.1.105
+## 1.1.116
 
-- Added payload checks
-
-## 1.1.106
-
-- Fixed MQTT server IP naming in region description file
-
-## 1.1.107
-
-- Upgrade to ghcr.io/hassio-addons/base:17.1.0, CHIRPSTACK_VERSION: 4.11.0
-
-## 1.1.112
-
-- Code extended to support MQTT component integrations
-
-## 1.1.113
-
-- Replaced custom js evaluator with dukpy package
-
-## 1.1.119
-
-- Tests extension and minor fixes in code, file cleanup
+- Code extended to support MQTT component integrations. Replaced custom js evaluator with dukpy package
 
 ## 1.1.125
 
-- Initialization re-factoring(5), fixed issue with log level
+- Tests extension and minor fixes in code, file cleanup. Initialization re-factoring, fixed issue with log level
+
+## 1.1.126
+
+- Added logging control via MQTT message: topic application/{ChirpStack appId}/bridge/info, message '{"log_level":"debug"}'. Added per device online checks. Initialization and logging re-factoring

@@ -1,6 +1,6 @@
 # https://developers.home-assistant.io/docs/add-ons/configuration#add-on-config
 name: Chirp2MQTT
-version: "1.1.125"
+version: "1.1.126"
 slug: chirp2mqtt
 description: HA add-on to incorporatex ChirpStack LoraWan devices into MQTT integration
 arch:
@@ -32,17 +32,19 @@ options:
   discovery_prefix: "homeassistant"
   options_start_delay: 2
   options_restore_age: 4
-  options_debug_print_payload: False
-  log_level: "info"
+  options_online_per_device: 0
+  options_log_level: "info"
+  database_actions: "None"
 schema:
   application_id: "str"
   mqtt_user: "str"
   mqtt_password: "str?"
   discovery_prefix: "str"
-  options_start_delay: "int"
-  options_restore_age: "int"
-  options_debug_print_payload: bool
-  log_level: "match(debug|info|warning|error|fatal|critical)?"
+  options_start_delay: "int(0,)"
+  options_restore_age: "int(0,)"
+  options_online_per_device: "float(0,)"
+  options_log_level: "list(detail|debug|info|warning|error|fatal|critical)?"
+  database_actions: "list(None|Backup|Restore|Backup and restore)?"
 timeout: 10
 services:
   - mqtt:need

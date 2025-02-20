@@ -1,26 +1,11 @@
 """The Chirpstack LoRaWan integration - constant definitions."""
-DOMAIN = "chirp"
-GRPCLIENT = "grpclient"
-MQTTCLIENT = "mqttclient"
-DEFAULT_NAME = "Chirp"
 
 CONF_API_SERVER = "chirpstack_api_server"
 CONF_API_PORT = "server_port"
-CONF_TENANT = "tenant"
-CONF_APPLICATION = "application_name"
 CONF_APPLICATION_ID = "application_id"
 
-DEFAULT_API_SERVER = ""
+DEFAULT_API_SERVER = "localhost"
 DEFAULT_API_PORT = 8080
-DEFAULT_API_KEY = ""
-DEFAULT_TENANT = "ChirpStack"
-DEFAULT_APPLICATION = "temp"
-
-CONF_CHIRP_SERVER_RESERVED = "chirp_server_reserved"
-CONF_CHIRP_NO_TENANTS = "chirp_server_no_tenants"
-CONF_ERROR_NO_APPS = "tenant_no_applications"
-CONF_ERROR_CHIRP_CONN_FAILED = "chirpstack_connection_failed"
-CONF_ERROR_MQTT_CONN_FAILED = "mqtt_connection_failed"
 
 CONF_MQTT_SERVER = "mqtt_server"
 CONF_MQTT_PORT = "mqtt_port"
@@ -28,22 +13,19 @@ CONF_MQTT_USER = "mqtt_user"
 CONF_MQTT_PWD = "mqtt_password"
 CONF_MQTT_DISC = "discovery_prefix"
 
-DEFAULT_MQTT_SERVER = "localhost"
+DEFAULT_MQTT_SERVER = "core-mosquitto"
 DEFAULT_MQTT_PORT = 1883
-DEFAULT_MQTT_USER = ""
-DEFAULT_MQTT_PWD = ""
-DEFAULT_MQTT_DISC = "homeassistant"
 
 CONF_OPTIONS_START_DELAY = "options_start_delay"
 DEFAULT_OPTIONS_START_DELAY = 2
 CONF_OPTIONS_RESTORE_AGE = "options_restore_age"
 DEFAULT_OPTIONS_RESTORE_AGE = 4
-CONF_OPTIONS_DEBUG_PAYLOAD = "options_debug_print_payload"
-DEFAULT_OPTIONS_DEBUG_PAYLOAD = False
+CONF_OPTIONS_LOG_LEVEL = "options_log_level"
+CONF_OPTIONS_ONLINE_PER_DEVICE = "options_online_per_device"
 
 CHIRPSTACK_TENANT = "HA owned"
 CHIRPSTACK_APPLICATION = "HA integration"
-CHIRPSTACK_API_KAY_NAME = "chirpha"
+CHIRPSTACK_API_KEY_NAME = "chirpha"
 
 MQTT_ORIGIN = "ChirpLora"
 BRIDGE_VENDOR = "Chirp2MQTT"
@@ -55,16 +37,14 @@ INTEGRATION_DEV_NAME = "ChirpStack LoraWan Integration"
 CONNECTIVITY_DEVICE_CLASS = "connectivity"
 BRIDGE_RESTART_ID = "restart"
 BRIDGE_RESTART_NAME = "Reload devices"
+BRIDGE_LOGLEVEL_ID = "log_level"
+BRIDGE_LOGLEVEL_NAME = "Log level"
 
-BRIDGE_CONF_COUNT = 2
-
-STATISTICS_SENSORS = "chirp_sensors"
-STATISTICS_DEVICES = "chirp_devices"
-STATISTICS_UPDATED = "chirp_updated"
+BRIDGE_CONF_COUNT = 3
 
 ENTITY_CATEGORY_DIAGNOSTIC = "diagnostic"
 
 ERRMSG_CODEC_ERROR = "Profile %s discovery codec script error '%s', source code '%s' converted to json '%s'"
 ERRMSG_DEVICE_IGNORED = "Discovery codec (%s->%s) missing or faulty for device %s with profile %s, device ignored"
-WARMSG_APPID_WRONG = "%s is not valid application ID, using %s (tenant %s, application %s)"
-WARMSG_DEVCLS_REMOVED = "Could not detect integration by device class %s for dev_eui %s, integration set to 'sensor', device class removed"
+WARMSG_APPID_WRONG = "'%s' is not valid application ID, using '%s' (tenant '%s', application '%s')"
+WARMSG_DEVCLS_REMOVED = "Could not detect integration by device class %s for device %s, integration set to 'sensor', device class removed"

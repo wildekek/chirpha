@@ -3,8 +3,8 @@
     "mqtt_user": "loramqtt",
     "mqtt_password": "ploramqtt",
     "discovery_prefix": "homeassistant",
-    "options_start_delay": 1,
-    "options_restore_age": 0,
-    "options_online_per_device": 0,
+    "options_start_delay": 0.5,
+    "options_restore_age": 0.5,
+    "options_online_per_device": 0.025,
     "options_log_level": "debug"
 }

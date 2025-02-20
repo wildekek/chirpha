@@ -10,10 +10,9 @@ import re
 from chirpstack_api import api
 import grpc
 
-from .const import CONF_API_PORT, CONF_API_SERVER, CONF_APPLICATION_ID, CHIRPSTACK_TENANT, CHIRPSTACK_APPLICATION, ERRMSG_CODEC_ERROR, ERRMSG_DEVICE_IGNORED, WARMSG_APPID_WRONG, CHIRPSTACK_API_KAY_NAME
+from .const import CONF_API_PORT, CONF_API_SERVER, CONF_APPLICATION_ID, CHIRPSTACK_TENANT, CHIRPSTACK_APPLICATION, ERRMSG_CODEC_ERROR, ERRMSG_DEVICE_IGNORED, WARMSG_APPID_WRONG, CHIRPSTACK_API_KEY_NAME
 
 _LOGGER = logging.getLogger(__name__)
-
 
 class ChirpGrpc:
     """Chirp2MQTT grpc interface support."""
@@ -26,7 +25,7 @@ class ChirpGrpc:
         self._channel = grpc.insecure_channel(
             f"{self._config.get(CONF_API_SERVER)}:{self._config.get(CONF_API_PORT)}"
         )
-        token_message = subprocess.run(["chirpstack", "-c", "/etc/chirpstack", "create-api-key", "--name", CHIRPSTACK_API_KAY_NAME], capture_output=True, text=True).stdout
+        token_message = subprocess.run(["chirpstack", "-c", "/etc/chirpstack", "create-api-key", "--name", CHIRPSTACK_API_KEY_NAME], capture_output=True, text=True).stdout
         self._token_id = token_message.split("id: ")[-1].split("\n")[0]
         bearer = token_message.split("token: ")[-1].rstrip("\n")
         self._auth_token = [("authorization", f"Bearer {bearer}")]
@@ -65,10 +64,11 @@ class ChirpGrpc:
             _LOGGER.warning(WARMSG_APPID_WRONG, self._application_id, application_id, tenant, application)
             self._application_id = application_id
         self.js_interpreter = dukpy.JSInterpreter()
-#        self.api_key_cleanup(CHIRPSTACK_API_KAY_NAME, self._token_id, tenant_id)
+#        self.api_key_cleanup(CHIRPSTACK_API_KEY_NAME, self._token_id, tenant_id)
         _LOGGER.info("ChirpStack application ID %s", self._application_id)
 
     def api_key_cleanup(self, api_key_name, api_key_id, tenant_id):
+        """Remove unneeded api keys"""
         api_keys = api.InternalServiceStub(self._channel)
         listApiKeysReq = api.ListApiKeysRequest()
         listApiKeysReq.tenant_id = tenant_id
@@ -104,6 +104,7 @@ class ChirpGrpc:
         }
 
     def is_valid_app_id(self, application_id):
+        """Check application id validity with api server."""
         application = api.ApplicationServiceStub(self._channel)
         applicationReq = api.GetApplicationRequest()
         applicationReq.id = application_id
@@ -201,6 +202,8 @@ class ChirpGrpc:
                     discovery_config[
                         "value_template"
                     ] = f"{{{{ value_json.object.{entity} }}}}"
+                #discovery_config["uplink_interval"] = profile.device_profile.uplink_interval
+                #discovery_config["device_status_req_interval"] = profile.device_profile.device_status_req_interval
 
             mac_version = (
                 profile.device_profile.DESCRIPTOR.fields_by_name["mac_version"]
@@ -209,8 +212,7 @@ class ChirpGrpc:
             )
             mac_version = (mac_version.replace("_", " ", 1)).replace("_", ".")
             discovery["dev_conf"] = {
-                "uplink_interval": profile.device_profile.uplink_interval,
-                "device_status_req_interval": profile.device_profile.device_status_req_interval,
+                "last_seen": device.last_seen_at if str(device.last_seen_at) else None,
                 "sw_version": mac_version,
                 "dev_eui": device.dev_eui,
                 "dev_name": device.name,
@@ -224,3 +226,13 @@ class ChirpGrpc:
             }
             devices_list.append(discovery)
         return devices_list
+
+    def get_device_visibility_info(self, dev_eui):
+        """Get device visibility data from api server: device last seen time stamp and expected uplink interval."""
+        device = self.get_chirp_device(dev_eui)
+        profile = self.get_chirp_device_profile(device.device.device_profile_id)
+        visibility = {}
+        visibility["uplink_interval"] = profile.device_profile.uplink_interval
+        visibility["device_status_req_interval"] = profile.device_profile.device_status_req_interval
+        visibility["last_seen"] = device.last_seen_at.seconds+device.last_seen_at.nanos*1e-9 if str(device.last_seen_at) else 0
+        return visibility

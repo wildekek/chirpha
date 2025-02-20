@@ -7,6 +7,7 @@ import time
 import re
 import logging
 from pathlib import Path
+import pytest
 
 from chirpha.const import (
     CONF_APPLICATION_ID,
@@ -14,6 +15,7 @@ from chirpha.const import (
 )
 import chirpha.start as chirpha
 from chirpha.start import INTERNAL_CONFIG
+from chirpha.const import CONF_OPTIONS_LOG_LEVEL
 
 from .patches import api, message, mqtt, set_size, get_size, insecure_channel
 
@@ -26,6 +28,9 @@ NO_APP_CONFIGURATION_FILE ="test_configuration_no_app.json"
 WITH_DELAY_CONFIGURATION_FILE ="test_configuration_delay.json"
 REGULAR_CONFIGURATION_FILE_INFO_NO_MQTT ="test_configuration_info_log_no_mqtt.json"
 REGULAR_CONFIGURATION_FILE_DEBUG_NO_MQTT ="test_configuration_debug_log_no_mqtt.json"
+REGULAR_CONFIGURATION_PER_DEVICE ="test_configuration_per_devoce.json"
+REGULAR_CONFIGURATION_NONZERO_DELAYS ="test_configuration_nonzero_delays.json"
+MIN_SLEEP = 0.1
 
 # pytest tests/components/chirp/
 # pytest tests/components/chirp/ --cov=homeassistant.components.chirp --cov-report term-missing -vv
@@ -69,7 +74,7 @@ def chirp_setup_and_run_test(caplog, run_test_case, conf_file=REGULAR_CONFIGURAT
     set_size(**test_params)
     mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).get_published()
     log_level_mapping = logging.getLevelNamesMapping()
-    log_level = log_level_mapping.get(config['log_level'].upper(), logging.INFO)
+    log_level = log_level_mapping.get(config[CONF_OPTIONS_LOG_LEVEL].upper(), logging.INFO)
     with run_chirp_ha(full_path_to_conf_file) as ch:
         caplog.set_level(log_level)
         time.sleep(0.01)
@@ -90,7 +95,7 @@ def chirp_setup_and_run_test(caplog, run_test_case, conf_file=REGULAR_CONFIGURAT
                         time.sleep(0.1)
                     #print("ooooooo ", no_ha_online, i, ha_online, 1 if not no_ha_online else 0, bridge_config, bridge_online, config_topics)
                     assert ha_online == (1 if not no_ha_online else 0)   # 1 message conditionally sent from test environment
-                    assert bridge_config == 2
+                    assert bridge_config == 3
                     assert bridge_online == 1
 
                 if run_test_case:
@@ -146,8 +151,3 @@ def check_for_no_registration(config):
     """Check for no mqtt registration messages with assertion."""
     sensor_configs = count_messages(r'/config', r'"via_device": "chirp2mqtt_bridge_', keep_history=True)
     assert sensor_configs == 0  #   check for 0 devices/sensors registered
-
-# #!/bin/bash
-# json='{"access_token":"kjdshfsd", "key2":"value"}'
-#
-# echo $json | grep -o '"access_token":"[^"]*' | grep -o '[^"]*$'

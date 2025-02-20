@@ -4,17 +4,16 @@ import time
 import logging
 
 from chirpha.const import BRIDGE_CONF_COUNT, CONF_APPLICATION_ID
+from chirpha.const import CONF_OPTIONS_START_DELAY, CONF_OPTIONS_RESTORE_AGE, CONF_OPTIONS_ONLINE_PER_DEVICE
+
 from tests import common
 
 from .patches import get_size, mqtt, set_size
 from tests.common import PAYLOAD_PRINT_CONFIGURATION_FILE, REGULAR_CONFIGURATION_FILE, REGULAR_CONFIGURATION_FILE_INFO
 from tests.common import REGULAR_CONFIGURATION_FILE_ERROR, CONF_MQTT_DISC, WITH_DELAY_CONFIGURATION_FILE
 from tests.common import REGULAR_CONFIGURATION_FILE_INFO_NO_MQTT, REGULAR_CONFIGURATION_FILE_DEBUG_NO_MQTT
-from tests.common import REGULAR_CONFIGURATION_FILE_WRONG_LOG_LEVEL
-
-#   su-exec postgres psql
-#   \c chirpstack
-#   DELETE FROM api_key WHERE created_at < to_date('2025-05-01', 'YYYY-MM-DD');
+from tests.common import REGULAR_CONFIGURATION_FILE_WRONG_LOG_LEVEL, REGULAR_CONFIGURATION_PER_DEVICE, REGULAR_CONFIGURATION_NONZERO_DELAYS
+from tests.common import MIN_SLEEP
 
 def test_ha_status_received(caplog):
     """Test for HA status message received."""
@@ -72,7 +71,7 @@ def test_ha_status_received_with_debug_log(caplog):
         mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).wait_empty_queue()
         config_topics = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).get_published()
         common.reload_devices(config)
-        time.sleep(0.1)
+        time.sleep(MIN_SLEEP)
         assert mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).stat_sensors == get_size("sensors") * get_size("idevices")  # 4 sensors per codec=0 device
         assert mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).stat_devices == get_size("idevices")
         # expecting config message per sensor + 1 bridge, 1 removal, 1 sensor data initialization message, 1 bridge state message
@@ -256,7 +255,7 @@ def test_payload_join_no_ha_online_ext(caplog):
 
     def run_test_payload_join_no_ha_online_ext(config):
         mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).publish(f"{config.get(CONF_MQTT_DISC)}/status", "online")
-        time.sleep(0.1)
+        time.sleep(MIN_SLEEP)
         mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).wait_empty_queue()
         config_topics = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).get_published(keep_history=True)
         no_ha_online = common.count_messages(r'^homeassistant/status$', r"online", keep_history=True)    # to be received as subscribed
@@ -269,9 +268,9 @@ def test_ha_offline_online(caplog):
 
     def run_test_ha_offline_online(config):
         mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).publish(f"{config.get(CONF_MQTT_DISC)}/status", "offline")
-        time.sleep(0.1)
+        time.sleep(MIN_SLEEP)
         mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).publish(f"{config.get(CONF_MQTT_DISC)}/status", "online")
-        time.sleep(0.1)
+        time.sleep(MIN_SLEEP)
         mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).wait_empty_queue()
         config_topics = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).get_published(keep_history=True)
         no_ha_online = common.count_messages(r'^homeassistant/status$', r"online", keep_history=True)    # to be received as subscribed
@@ -293,7 +292,7 @@ def test_ha_online_rec(caplog):
         no_of_conf_msgs = common.count_messages(r'dev_eui.*/config$', f'{config[CONF_APPLICATION_ID]}', keep_history=True)    # new value come in
         assert no_ha_online == 1
         assert no_of_conf_msgs == mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).stat_sensors
-        assert "HA online, publishing bridge setup 'configure' message" in caplog.text
+        assert "HA online, continuing configuration" in caplog.text
         assert "timeout expired, but no HA online message received" not in caplog.text
 
     common.chirp_setup_and_run_test(caplog, run_test_ha_online_rec, test_params=dict(devices=1, codec=0), conf_file=WITH_DELAY_CONFIGURATION_FILE, allowed_msg_level=logging.WARNING)
@@ -341,3 +340,132 @@ def test_wrong_log_level(caplog):
         assert "Wrong log level specified" in caplog.text
 
     common.chirp_setup_and_run_test(caplog, run_test_wrong_log_level, test_params=dict(devices=1, codec=0), conf_file=REGULAR_CONFIGURATION_FILE_WRONG_LOG_LEVEL, allowed_msg_level=logging.WARNING)
+
+def test_live_log_level_change(caplog):
+    """Test log level change: set log_level to error/wromg level, info and check if log entry contents/counts are correct."""
+
+    def run_test_live_log_level_change(config):
+        #mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).wait_empty_queue()
+        #assert "Bridge state message received," not in caplog.text
+        assert "Bridge state message processing failed:" not in caplog.text
+        topic = f"application/{config.get(CONF_APPLICATION_ID)}/bridge/status"
+        msg = '{"log_level":"error"}'
+        mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).publish(topic, msg)
+        mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).wait_empty_queue()
+        #time.sleep(MIN_SLEEP)
+        assert "Bridge state message received" in caplog.text
+        assert "Bridge state message processing failed:" not in caplog.text
+        log_message_count = len(caplog.records)
+        assert log_message_count > 1
+        msg = '{"log_level":"errorx"}'
+        mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).publish(topic, msg)
+        mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).wait_empty_queue()
+        #time.sleep(MIN_SLEEP)
+        assert "Bridge state message processing failed:" in caplog.text
+        assert log_message_count + 1 == len(caplog.records)
+        msg = '{"log_level":"info"}'
+        mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).publish(topic, msg)
+        mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).wait_empty_queue()
+        time.sleep(MIN_SLEEP)
+        assert log_message_count + 1 == len(caplog.records)
+
+    common.chirp_setup_and_run_test(caplog, run_test_live_log_level_change, test_params=dict(devices=1, codec=0), conf_file=REGULAR_CONFIGURATION_FILE_INFO, allowed_msg_level=logging.ERROR)
+
+
+def test_device_status_refresh(caplog):
+    """Test request to update device status via publishing live status message."""
+
+    def run_test_device_status_refresh(config):
+        time.sleep(MIN_SLEEP+MIN_SLEEP)
+        mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).get_published()   # clear published message queue
+        assert "Bridge device live status update requested" not in caplog.text
+        # send cur message for each device to simulate retain=True, check for timestamp after bridge initialization - to be ignored
+        topic = f"application/{config.get(CONF_APPLICATION_ID)}/bridge/live"
+        msg = "start"    # dummy, not checked
+        mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).publish(topic, msg)
+        mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).wait_empty_queue()
+        assert "Bridge device live status update requested" in caplog.text
+        for i in range(0, mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).stat_devices):
+            dev_eui = f"dev_eui{i}"
+            topic = f"application/{config.get(CONF_APPLICATION_ID)}/device/{dev_eui}/event/cur"
+            msg = f'{{"time_stamp":{time.time()-2},"status": "onlinex","batteryLevel": 76}}'
+            mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).publish(topic, msg)
+        mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).wait_empty_queue()
+        topic = f"application/{config.get(CONF_APPLICATION_ID)}/bridge/live"
+        msg = "start"    # dummy, not checked
+        mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).publish(topic, msg)
+        mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).wait_empty_queue()
+        for i in range(0, mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).stat_devices):
+            dev_eui = f"dev_eui{i}"
+            topic = f"application/{config.get(CONF_APPLICATION_ID)}/device/{dev_eui}/event/cur"
+            msg = f'{{"time_stamp":{time.time()-4},"status": "offlinex", "batteryLevel": 77}}'
+            mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).publish(topic, msg)
+        mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).wait_empty_queue()
+        no_of_live_msgs = common.count_messages(r'/bridge/live$', None, keep_history=True)    # to be received as subscribed
+        no_of_cur_msgs = common.count_messages(r'/device/.*/cur$', None, keep_history=True)    # to be received as subscribed
+        no_of_cur_msgs_off = common.count_messages(r'/device/.*/cur$', '"status": "offline"', keep_history=True)    # to be received as subscribed
+        no_of_cur_msgs_on = common.count_messages(r'/device/.*/cur$', '"status": "online"', keep_history=True)    # to be received as subscribed
+        no_of_up_msgs = common.count_messages(r'/device/.*/up$', None, keep_history=True)    # should not show up due to time stamp
+        config_topics = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).get_published()
+        assert no_of_cur_msgs == 4 and no_of_up_msgs == 1
+        assert no_of_cur_msgs_off == 1
+        assert no_of_cur_msgs_on == 1
+
+    common.chirp_setup_and_run_test(caplog, run_test_device_status_refresh, test_params=dict(devices=1, codec=0), conf_file=PAYLOAD_PRINT_CONFIGURATION_FILE, allowed_msg_level=logging.WARNING)
+
+def test_per_device_online(caplog):
+    """Test request to update device status via publishing live status message."""
+
+    def run_test_per_device_online(config):
+        time.sleep(MIN_SLEEP+MIN_SLEEP)
+        config_topics = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).get_published(keep_history=True)
+        print("----------", config_topics)
+        no_per_dev = common.count_messages(r'/config$', '{"topic": "application/.*/device/.*/event/cur", "value_template": "{{ value_json.state }}', keep_history=True)    # to be received as subscribed
+        assert no_per_dev == mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).stat_sensors
+
+    common.chirp_setup_and_run_test(caplog, run_test_per_device_online, test_params=dict(devices=1, codec=0), conf_file=REGULAR_CONFIGURATION_PER_DEVICE, allowed_msg_level=logging.WARNING)
+
+def test_not_per_device_online(caplog):
+    """Test sensor device status configuration for not per device checks."""
+
+    def run_test_not_per_device_online(config):
+        time.sleep(MIN_SLEEP+MIN_SLEEP)
+        no_per_dev = common.count_messages(r'/config$', '{"topic": "application/.*/device/.*/event/cur", "value_template": "{{ value_json.state }}', keep_history=True)    # to be received as subscribed
+        no_no_per_dev = common.count_messages(r'/config$', '{"topic": "application/.*/bridge/status", "value_template": "{{ value_json.state }}', keep_history=True)    # to be received as subscribed
+        assert no_no_per_dev == mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).stat_sensors
+        assert no_per_dev == 0
+
+    common.chirp_setup_and_run_test(caplog, run_test_not_per_device_online, test_params=dict(devices=1, codec=0), allowed_msg_level=logging.WARNING)
+
+def test_init_live_overlapping(caplog):
+    """Test request to update device status while cur values restore in progress (extended time window for both actions)."""
+
+    def run_test_init_live_overlapping(config):
+        restore_age = config.get(CONF_OPTIONS_RESTORE_AGE)
+        online_period = config.get(CONF_OPTIONS_ONLINE_PER_DEVICE)
+        time.sleep(MIN_SLEEP) # this force windows to overlap
+        topic = f"application/{config.get(CONF_APPLICATION_ID)}/bridge/live"
+        msg = "start"
+        mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).publish(topic, msg)
+        mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).wait_empty_queue()
+        time.sleep(3*(restore_age+MIN_SLEEP)+online_period+MIN_SLEEP)
+        #   to check message log to have subscribed/live/subscribed/unsub: group of 2 starts, 1 end
+        #        if "Subscribed to retained values topic at" in record.msg: i_retained_on += 1
+        #    if "Unsubscribed from retained values topic" in record.msg: i_retained_off += 1
+        #    Bridge device live status update requested
+        filtered_log = []
+        subscribe = "Subscribed to retained values topic%s at %s"
+        unsubscribe = "Unsubscribed from retained values topic"
+        live = "Bridge device live status update requested"
+        for record in caplog.records:
+            if subscribe in record.msg or unsubscribe in record.msg or live in record.msg:
+                filtered_log.append(record)
+        print(filtered_log)
+        assert filtered_log[0].msg == subscribe     # from retained values restoration process
+        assert filtered_log[1].msg == live          # manual live check request
+        assert filtered_log[2].msg == unsubscribe   # done
+        assert filtered_log[3].msg == live          # periodic live request
+        assert filtered_log[4].msg == subscribe     # from live request
+        assert filtered_log[5].msg == unsubscribe   # done
+
+    common.chirp_setup_and_run_test(caplog, run_test_init_live_overlapping, test_params=dict(devices=1, codec=1), conf_file=REGULAR_CONFIGURATION_NONZERO_DELAYS, allowed_msg_level=logging.WARNING)

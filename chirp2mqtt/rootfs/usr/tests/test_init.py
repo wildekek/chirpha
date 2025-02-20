@@ -1,9 +1,10 @@
 """Test the ChirpStack LoRaWan integration initilization path initiated from start.py."""
 import logging
+import time
 from tests import common
 
 from .patches import get_size, mqtt, set_size
-from tests.common import NO_APP_CONFIGURATION_FILE
+from tests.common import NO_APP_CONFIGURATION_FILE, MIN_SLEEP
 from chirpha.const import WARMSG_APPID_WRONG
 
 def test_entry_setup_unload(caplog):
@@ -71,10 +72,7 @@ def test_setup_with_auto_tenant_auto_apps_mqtt_fail(caplog):
     """Test if chirpha gracefully exits in case of mqtt connection failure."""
 
     common.chirp_setup_and_run_test(caplog, None, test_params=dict(tenants=1, mqtt=0), a_live_at_end=False)
-    i_sensor_warn = 0
-    for record in caplog.records:
-        if "Chirp failed:" in record.msg: i_sensor_warn += 1
-    assert i_sensor_warn == 1
+    assert "Chirp failed:" in caplog.text
 
 def test_setup_with_auto_tenant_auto_apps_mqtt(caplog):
     """Test if integration unloads with default configuration."""
@@ -90,16 +88,25 @@ def test_thread_kill(caplog):
         assert get_size("devices") * get_size("sensors") == mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).stat_sensors
 
     common.chirp_setup_and_run_test(caplog, run_test_thread_kill, kill_at_end=True)
-    i_sensor_warn = 0
-    for record in caplog.records:
-        if "Shutdown requested" in record.msg: i_sensor_warn += 1
-    assert i_sensor_warn == 1
+    assert "Shutdown requested" in caplog.text
 
 def test_setup_with_failing_mqtt_publish(caplog):
     """Test if chirpha gracefully exits in case of mqtt publish failure."""
 
     common.chirp_setup_and_run_test(caplog, None, test_params=dict(publish=0), a_live_at_end=False, check_msg_queue=False)
-    i_sensor_warn = 0
-    for record in caplog.records:
-        if "Chirp failed:" in record.msg: i_sensor_warn += 1
-    assert i_sensor_warn == 1
+    assert "Chirp failed:" in caplog.text
+
+def test_setup_with_failing_mqtt_subscribe(caplog):
+    """Test if chirpha gracefully exits in case of mqtt subscribe failure."""
+
+    common.chirp_setup_and_run_test(caplog, None, test_params=dict(subscribe=0), a_live_at_end=False, check_msg_queue=False)
+    assert "Chirp failed:" in caplog.text
+
+def test_setup_with_failing_mqtt_unsubscribe(caplog):
+    """Test if chirpha gracefully exits in case of mqtt unsubscribe failure."""
+
+    def run_test_setup_with_failing_mqtt_unsubscribe(config):
+        time.sleep(MIN_SLEEP)
+
+    common.chirp_setup_and_run_test(caplog, run_test_setup_with_failing_mqtt_unsubscribe, test_params=dict(unsubscribe=0), a_live_at_end=False, check_msg_queue=False)
+    assert "Chirp failed:" in caplog.text

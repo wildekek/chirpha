@@ -10,25 +10,38 @@ import os
 import sys
 from pathlib import Path
 from typing import Final
+import threading
 
 from .grpc import ChirpGrpc
 from .mqtt import ChirpToHA
-from .const import CONF_APPLICATION_ID
+from .const import CONF_API_SERVER, CONF_API_PORT, CONF_MQTT_SERVER, CONF_MQTT_PORT, CONF_OPTIONS_LOG_LEVEL
+from .const import CONF_APPLICATION_ID, DEFAULT_API_SERVER, DEFAULT_API_PORT, DEFAULT_MQTT_PORT, DEFAULT_MQTT_SERVER
+
+# https://stackoverflow.com/questions/2183233/how-to-add-a-custom-loglevel-to-pythons-logging-facility/13638084#13638084
+DETAILED_LEVEL_NUM = 5
+logging.addLevelName(DETAILED_LEVEL_NUM, "DETAIL")
+def detail(self, message, *args, **kws):
+    if self.isEnabledFor(DETAILED_LEVEL_NUM):
+        self._log(DETAILED_LEVEL_NUM, message, args, **kws)
+logging.Logger.detail = detail
+# https://stackoverflow.com/questions/2183233/how-to-add-a-custom-loglevel-to-pythons-logging-facility/13638084#13638084
 
 # Date/Time formats
 FORMAT_DATE: Final = "%Y-%m-%d"
 FORMAT_TIME: Final = "%H:%M:%S"
 FORMAT_DATETIME: Final = f"{FORMAT_DATE} {FORMAT_TIME}"
-FMT = ( "%(asctime)s.%(msecs)03d chirpha %(levelname)s [%(name)s] %(message)s" )
+#FMT = ( "%(asctime)s.%(msecs)03d chirpha %(levelname)s [%(name)s] %(message)s" )
+FMT = ( "%(asctime)s.%(msecs)03d chirpha %(levelname)s %(message)s" )
+
 CONFIGURATION_FILE = '/data/options.json'
 
 _LOGGER = logging.getLogger(__name__)
 
 INTERNAL_CONFIG = {
-  "chirpstack_api_server": "localhost",
-  "server_port": 8080,
-  "mqtt_server": "core-mosquitto",
-  "mqtt_port": 1883,
+  CONF_API_SERVER: DEFAULT_API_SERVER,
+  CONF_API_PORT: DEFAULT_API_PORT,
+  CONF_MQTT_SERVER: DEFAULT_MQTT_SERVER,
+  CONF_MQTT_PORT: DEFAULT_MQTT_PORT,
 }
 
 class run_chirp_ha:
@@ -38,10 +51,17 @@ class run_chirp_ha:
         self._config = None
         self._configuration_file = configuration_file
         signal.signal(signal.SIGTERM, self.stop_chirp_ha)
-        pass
+        threading.excepthook = self.subthread_failed
+
+    def subthread_failed(self, args):
+        _LOGGER.error("Chirp failed: %s", args.exc_value)
+        self.close_mqtt_loop()
 
     def stop_chirp_ha(self, signum, frame):
         _LOGGER.info("Shutdown requested")
+        self.close_mqtt_loop()
+
+    def close_mqtt_loop(self):
         if self._mqtt_client:   # close to exit server loop
             _LOGGER.info("Closing MQTT connection")
             self._mqtt_client.close()
@@ -49,7 +69,6 @@ class run_chirp_ha:
 
     def main(self):
         logging.basicConfig(level=logging.INFO, format=FMT, datefmt=FORMAT_DATETIME)
-        log_level_mapping = logging.getLevelNamesMapping()
         config = None
         try:
             module_dir = Path(globals().get("__file__", "./_")).absolute().parent
@@ -59,23 +78,21 @@ class run_chirp_ha:
             self._config = config
             with open(str(module_dir)+'/classes.json', 'r') as file:
                 classes = json.load(file)
-            log_level = log_level_mapping.get(config['log_level'].upper(), None)
-            if not log_level:
-                log_level = logging.INFO
-                config['log_level'] = 'info'
-                _LOGGER.warning("Wrong log level specified '%s', assuming 'info'", config['log_level'])
-            logging.getLogger().setLevel(log_level)
             _LOGGER.info("ChirpHA started")
-            _LOGGER.debug("Logging level %s(%s)", config['log_level'].upper(), log_level)
+            try:
+                logging.getLogger().setLevel(config[CONF_OPTIONS_LOG_LEVEL].upper())
+            except Exception as error:
+                _LOGGER.warning("Wrong log level specified '%s', assuming 'info'", config[CONF_OPTIONS_LOG_LEVEL])
+                config[CONF_OPTIONS_LOG_LEVEL] = 'info'
+            _LOGGER.debug("Logging level %s", config[CONF_OPTIONS_LOG_LEVEL].upper())
             _LOGGER.debug("Current directory %s, module directory %s", os.getcwd(), module_dir)
             _LOGGER.debug("Configuration file %s", self._configuration_file)
             _LOGGER.info("Version %s", __version__)
             self._grpc_client = ChirpGrpc(config, __version__)
             self._mqtt_client = ChirpToHA(config, __version__, classes, self._grpc_client)
-
             self._mqtt_client._client.loop_forever()
         except Exception as error:
-            if log_level == logging.DEBUG:
+            if logging.getLogger().getEffectiveLevel() == logging.DEBUG:
                 _LOGGER.exception("Chirp failed: %s", str(error))
             else:
                 _LOGGER.error("Chirp failed: %s", str(error))

@@ -6,6 +6,7 @@ import enum
 from queue import Queue
 import traceback
 import sys
+import math
 
 MODEL_SIZES = [
     {
@@ -16,8 +17,13 @@ MODEL_SIZES = [
         "grpc": 1,
         "publish": 1,
         "codec": 1,
+        "subscribe": 1,
+        "unsubscribe": 1,
     }
 ]
+
+getdevcount = [0]
+
 CODEC = [   # array of (no_of_sensors, "codec_code")
     (   #0
         4,
@@ -163,6 +169,8 @@ def set_size(
     publish=1,
     codec=1,
     disabled=False,
+    subscribe=1,
+    unsubscribe=1,
 ):
     """Set test mock parameters."""
     MODEL_SIZES[0]["tenants"] = tenants
@@ -173,7 +181,10 @@ def set_size(
     MODEL_SIZES[0]["publish"] = publish
     MODEL_SIZES[0]["codec"] = codec
     MODEL_SIZES[0]["disabled"] = disabled
-
+    MODEL_SIZES[0]["getdevcount"] = getdevcount
+    MODEL_SIZES[0]["subscribe"] = subscribe
+    MODEL_SIZES[0]["unsubscribe"] = unsubscribe
+    getdevcount[0] = 0
 class message:
     """Class to represent mqtt message."""
 
@@ -303,11 +314,11 @@ class mqtt:
             """Mock subscribe function."""
             sub_topics = topic.split("/")
             self._subscribed.add(sub_topics[-1])
-            return (0, 0)
+            return (0, 0) if get_size("subscribe") else (1,1)
 
         def unsubscribe(self, topic):
             """Mock unsubscribe function."""
-            return (0, 0)
+            return (0, 0) if get_size("unsubscribe") else (1,1)
 
         def loop_stop(self):
             """Mock loop_stop function."""
@@ -480,6 +491,7 @@ class api:
                     device.device_status = lambda: None
                     device.device_status.battery_level = 95
                     device.device_status.external_power_source = (i % 2) == 1
+                    device.last_seen_at = ""
                     request.result.append(device)
             request.total_count = no_of_devices
             return request
@@ -491,8 +503,16 @@ class api:
             request.device = lambda: None
             request.device.dev_eui = deviceReq.dev_eui
             request.device.name = f"device_name{dev_no}"
-            request.device_profile_id = f"device_profile_id{dev_no}"
+            request.device.device_profile_id = f"device_profile_id{dev_no}"
             request.device.is_disabled = get_size("disabled")
+            if getdevcount[0] == 0:
+                request.last_seen_at = ""
+            else:
+                request.last_seen_at = lambda: None
+                t_stamp = math.modf(time.time() - (getdevcount[0] % 2) - 0.5)
+                request.last_seen_at.seconds = int(t_stamp[1])
+                request.last_seen_at.nanos = int(t_stamp[0]*1e9)
+            getdevcount[0] += 1
             return request
 
     def ListDevicesRequest():
@@ -539,7 +559,7 @@ class api:
             request = lambda: None
             request.device_profile = lambda: None
             request.device_profile.id = deviceProfileReq.id
-            request.device_profile.uplink_interval = 17
+            request.device_profile.uplink_interval = 1
             request.device_profile.device_status_req_interval = 71
 
             request.device_profile.measurements = {}

@@ -26,7 +26,6 @@ from .const import (
     CONF_MQTT_PWD,
     CONF_MQTT_SERVER,
     CONF_MQTT_USER,
-    CONF_OPTIONS_DEBUG_PAYLOAD,
     CONF_OPTIONS_RESTORE_AGE,
     CONF_OPTIONS_START_DELAY,
     CONNECTIVITY_DEVICE_CLASS,
@@ -36,6 +35,10 @@ from .const import (
     CONF_MQTT_PORT,
     CONF_MQTT_DISC,
     WARMSG_DEVCLS_REMOVED,
+    BRIDGE_LOGLEVEL_ID,
+    BRIDGE_LOGLEVEL_NAME,
+    CONF_OPTIONS_ONLINE_PER_DEVICE,
+    CONF_OPTIONS_LOG_LEVEL,
 )
 from .grpc import ChirpGrpc
 
@@ -65,6 +68,7 @@ def generate_unique_id(configuration):
     return unique_id
 
 def convert_ret_val(ret_val):
+    """Convert PAHO MQTT client api return codes to string, empty for 0(OK) return code."""
     if isinstance(ret_val, tuple):
         if ret_val[0]:
             return f", return code ({ret_val[0]},{ret_val[1]})"
@@ -110,8 +114,15 @@ class ChirpToHA:
             f"{BRIDGE_VENDOR} {BRIDGE} {self._unique_id}"
         )
         self._ha_online_event = threading.Event()
+        self._cur_delay_event = threading.Event()
+        self._dev_check_event = threading.Event()
         self._bridge_init_time = None
         self._cur_open_time = None
+        self._live_on = False
+        self._bridge_state_received = False
+        self._per_device_chk_interval = float(self._config.get(CONF_OPTIONS_ONLINE_PER_DEVICE))
+        self._per_device_online = self._per_device_chk_interval!=0
+        self._cur_opened_count = 0
         self._discovery_delay = self._config.get(CONF_OPTIONS_START_DELAY)
         self._cur_age = self._config.get(CONF_OPTIONS_RESTORE_AGE)
         self._devices_config_topics = set()
@@ -123,12 +134,12 @@ class ChirpToHA:
         self._bridge_config_topics_published = -1
         self._initialize_topic = f"application/{self._application_id}/status"
         self._bridge_state_topic = f"application/{self._application_id}/bridge/status"
+        self._bridge_live_topic = f"application/{self._application_id}/bridge/live"
         self._bridge_restart_topic = (
             f"application/{self._application_id}/bridge/restart"
         )
         self._ha_status = f"{self._discovery_prefix}/status"
         self._sub_cur_topic = f"application/{self._application_id}/device/+/event/cur"
-        self._print_payload = self._config.get(CONF_OPTIONS_DEBUG_PAYLOAD)
         _LOGGER.info(
             "Connected to MQTT at %s:%s as %s",
             self._config.get(CONF_MQTT_SERVER),
@@ -137,44 +148,94 @@ class ChirpToHA:
         )
         self._client.on_message = self.on_message
 
-        self._client.subscribe(self._initialize_topic)
-        self._client.subscribe(self._ha_status)
+        self.subscribe(self._initialize_topic)
+        self.subscribe(self._ha_status)
+        self.subscribe(self._bridge_live_topic)
         self._availability_element = [
             {
                 "topic": self._bridge_state_topic,
                 "value_template": "{{ value_json.state }}",
-                "payload_available": "online",
-                "payload_not_available": "offline",
+            #    "payload_available": "online",
+            #    "payload_not_available": "offline",
             }
         ]
 
         self._wait_for_ha_online = threading.Thread(target=self.ha_online_waiter)
+        self._wait_for_dev_check = threading.Thread(target=self.dev_check_waiter)
+        self._wait_for_cur = threading.Thread(target=self.cur_waiter)
 
-        ret_val = self._client.publish( self._initialize_topic, "initialize" )
+        self.publish( self._initialize_topic, "initialize" )
         _LOGGER.info(
-            "Bridge setup 'initialize' message published%s",
-            convert_ret_val(ret_val),
+            "Bridge setup 'initialize' message published",
         )
 
     def on_connect(self, client, userdata, connect_flags, reason_code, properties):
+        """MQTT api connection callback: throws error for failure cases."""
         if reason_code.is_failure:
             raise Exception(f"MQTT connection failed: {reason_code.value} - '{reason_code}'")
         else:
             self._client.on_connect = None
 
+    def subscribe(self, topic):
+        """MQTT subscribe api wrapper: throws error for failure cases."""
+        ret_val = self._client.subscribe(topic)
+        ex_message = convert_ret_val(ret_val)
+        if ex_message != "":
+            raise Exception(f"MQTT subscribe failed: '{ex_message}'")
+        _LOGGER.detail(
+            "MQTT subscribed to topic %s", topic,
+        )
+        return ret_val
+
+    def unsubscribe(self, topic):
+        """MQTT unsubscribe api wrapper: throws error for failure cases."""
+        ret_val = self._client.unsubscribe( topic )
+        ex_message = convert_ret_val(ret_val)
+        if ex_message != "":
+            raise Exception(f"MQTT unsubscribe failed: '{ex_message}'")
+        _LOGGER.detail(
+            "MQTT unsubscribed from topic %s", topic,
+        )
+        return ret_val
+
+    def publish(self, topic, message, retain=False):
+        """MQTT publish api wrapper: throws error for failure cases."""
+        ret_val = self._client.publish( topic, message, retain=retain )
+        ex_message = convert_ret_val(ret_val)
+        if ex_message != "":
+            raise Exception(f"MQTT publish failed: '{ex_message}'")
+        _LOGGER.detail(
+            "MQTT message published: topic %s, payload %s, retain=%s", topic, message, retain
+        )
+        return ret_val
+
     def ha_online_waiter(self): # to start bridge if homeassistant/status message is not received within discovery timeout
+        """Thread app to send HA online message after specified time."""
         if not self._ha_online_event.wait(self._discovery_delay+0.1):
             self._ha_online_event.set()
-            ret_val = self._client.publish( self._initialize_topic, "configure" )
-            _LOGGER.debug("%s timeout expired, but no HA online message received, bridge setup 'configure' message published%s",
-                          self._discovery_delay, convert_ret_val(ret_val))
+            self.publish( self._initialize_topic, "configure" )
+            _LOGGER.debug("%ss timeout expired, but no HA online message received, bridge setup 'configure' message published",
+                          self._discovery_delay)
+
+    def dev_check_waiter(self): # to periodically start device status update
+        """Thread app to send refresh device live status message after specified time in infinite loop."""
+        while not self._dev_check_event.is_set():
+            if not self._dev_check_event.wait(self._per_device_chk_interval*60+0.1):
+                self.publish( self._bridge_live_topic, "start" )
+
+    def cur_waiter(self): # close time window for cur message processing
+        """Thread app to close cur window after specified time, prepare thread for next time run."""
+        if not self._cur_delay_event.wait(self._cur_age+0.1):
+            time_delta = self._cur_open_time + self._cur_age - time.time()
+            while time_delta > 0 and not self._cur_delay_event.wait(time_delta):
+                time_delta = self._cur_open_time + self._cur_age - time.time()
+            _LOGGER.debug("Time to stop cur message watch")
+            self.disable_cur()
+            self._wait_for_cur = threading.Thread(target=self.cur_waiter)
 
     def start_bridge(self):
         """Start Lora bridge registration within HA MQTT."""
-        _LOGGER.info(
-            "Bridge initialization time stamp set to %s",
-            self._bridge_init_time,
-        )
+
         bridge_publish_data = self.get_conf_data(
             BRIDGE_STATE_ID,
             {  #   'entities':
@@ -196,7 +257,7 @@ class ChirpToHA:
             {  #   'device':
                 "manufacturer": BRIDGE_VENDOR,
                 "model": BRIDGE,
-                "identifiers": [to_lower_case_no_blanks(self._bridge_indentifier)],
+                "identifiers": [self._bridge_indentifier],
             },
             {  #   'dev_conf':
                 "measurement_names": {BRIDGE_STATE_ID: BRIDGE_ENTITY_NAME},
@@ -205,20 +266,14 @@ class ChirpToHA:
             },
         )
 
-        ret_val = self._client.publish(
+        self.publish(
             bridge_publish_data["discovery_topic"],
             bridge_publish_data["discovery_config"],
             retain=True,
         )
         _LOGGER.debug(
-            "Bridge device configuration published%s",
-            convert_ret_val(ret_val),
+            "Bridge device connectivity sensor published"
         )
-        if self._print_payload:
-            _LOGGER.debug(
-                "Bridge device configuration published. MQTT payload %s",
-                bridge_publish_data["discovery_config"],
-            )
         self._bridge_config_topics_published = 1
 
         bridge_refresh_data = self.get_conf_data(
@@ -242,7 +297,7 @@ class ChirpToHA:
             {  #   'device':
                 "manufacturer": BRIDGE_VENDOR,
                 "model": BRIDGE,
-                "identifiers": [to_lower_case_no_blanks(self._bridge_indentifier)],
+                "identifiers": [self._bridge_indentifier],
             },
             {  #   'dev_conf':
                 "measurement_names": {BRIDGE_RESTART_ID: BRIDGE_RESTART_NAME},
@@ -250,22 +305,68 @@ class ChirpToHA:
                 "dev_eui": self._unique_id,
             },
         )
-        ret_val = self._client.publish(
+        self.publish(
             bridge_refresh_data["discovery_topic"],
             bridge_refresh_data["discovery_config"],
             retain=True,
         )
-        self._bridge_config_topics_published += 1
-        ret_val = self._client.publish(
-            self._bridge_state_topic, '{"state": "online"}', retain=True
+        _LOGGER.debug(
+            "Bridge device restart button published"
         )
+        self._bridge_config_topics_published += 1
+
+        bridge_log_data = self.get_conf_data(
+            BRIDGE_LOGLEVEL_ID,
+            {  #   'entities':
+                "integration": "select",
+                "entity_conf": {
+                    "availability_mode": "all",
+                    "state_topic": self._bridge_state_topic,
+                    "value_template": '{{ value_json.log_level | lower }}',
+                    "command_topic": self._bridge_state_topic,
+                    "command_template": '{"state": "online", "log_level": "{{ value }}"}',
+                    "object_id": to_lower_case_no_blanks(
+                        f"{BRIDGE_VENDOR} {BRIDGE} {BRIDGE_LOGLEVEL_ID}"
+                    ),
+                    "unique_id": to_lower_case_no_blanks(
+                        f"{BRIDGE} {self._unique_id} {BRIDGE_LOGLEVEL_NAME} {BRIDGE_VENDOR}"
+                    ),
+                    "options": ["error", "warning", "info", "debug", "detail"],
+                    "retain": True,
+                },
+            },
+            {  #   'device':
+                "manufacturer": BRIDGE_VENDOR,
+                "model": BRIDGE,
+                "identifiers": [self._bridge_indentifier],
+            },
+            {  #   'dev_conf':
+                "measurement_names": {BRIDGE_LOGLEVEL_ID: BRIDGE_LOGLEVEL_NAME},
+                "dev_name": BRIDGE_NAME,
+                "dev_eui": self._unique_id,
+            },
+        )
+
+        self.publish(
+            bridge_log_data["discovery_topic"],
+            bridge_log_data["discovery_config"],
+            retain=True,
+        )
+        _LOGGER.debug(
+            "Bridge device log select published"
+        )
+        self._bridge_config_topics_published += 1
         _LOGGER.info(
-            "Bridge state turned on%s",
-            convert_ret_val(ret_val),
+            "Bridge initialization: %s components published",
+            self._bridge_config_topics_published,
         )
 
     def reload_devices(self):
         self._bridge_init_time = time.time()
+        _LOGGER.info(
+            "Bridge initialization time stamp %s",
+            self._bridge_init_time,
+        )
 
         device_sensors = self._grpc_client.get_current_device_entities()
 
@@ -294,20 +395,14 @@ class ChirpToHA:
                     if conf_key.endswith("_template"):
                         value_templates.append(sensor_entity_conf_data["discovery_config_struct"][conf_key])
                 devices_config_topics.add(sensor_entity_conf_data["discovery_topic"])
-                ret_val = self._client.publish(
+                self.publish(
                     sensor_entity_conf_data["discovery_topic"],
                     sensor_entity_conf_data["discovery_config"],
                     retain=True,
                 )
                 _LOGGER.info(
-                    f"Discovery message published: device {dev_eui} sensor '{sensor_entity_conf_data["discovery_topic"].split("/")[1]}'%s",
-                    convert_ret_val(ret_val),
+                    f"Discovery message published: device {dev_eui} sensor '{sensor_entity_conf_data["discovery_topic"].split("/")[1]}'"
                 )
-                if self._print_payload:
-                    _LOGGER.debug(
-                        "Device sensor published. MQTT payload %s",
-                        sensor_entity_conf_data["discovery_config"],
-                    )
                 for sens_id in previous_values:
                     if (
                         sens_id
@@ -349,15 +444,56 @@ class ChirpToHA:
             self._dev_sensor_count,
         )
 
+    def enable_cur(self):
+        """Enable cur window for restoring previous device values or updating live status."""
+        self._cur_open_time = time.time()
+        if not self._cur_opened_count:
+            ret_val = self.subscribe(self._sub_cur_topic)
+            _LOGGER.info(
+                "Subscribed to retained values topic%s at %s",
+                convert_ret_val(ret_val),
+                self._cur_open_time,
+            )
+            self._wait_for_cur.start()
+            time.sleep(0)
+        self._cur_opened_count += 1
+
+    def disable_cur(self):
+        """Disable cur window."""
+        self._cur_opened_count = 0
+        if not self._cur_opened_count:
+            self._live_on = False
+            self.unsubscribe(self._sub_cur_topic)
+            _LOGGER.info(
+                "Unsubscribed from retained values topic"
+            )
+            _LOGGER.debug(
+                "Not processed retained devices %s, processing age %s(s)",
+                len([dev_id for dev_id, val in self._values_cache.items() if val == {}]),
+                time.time() - self._cur_open_time,
+            )
+
+    def get_device_status(self, dev_eui):
+        """Check device live status based on ChirpStack server information via gRPC interface."""
+        visibility = self._grpc_client.get_device_visibility_info(dev_eui)
+        if visibility["last_seen"] and visibility["uplink_interval"]:
+            status = "online" if time.time()-visibility["last_seen"]<=visibility["uplink_interval"] else "offline"
+        else:
+            status = "offline"
+        _LOGGER.debug(
+            "Device %s status now is %s (live status: %s, current time stamp %s)", dev_eui, status, visibility, time.time()
+        )
+        return status
+
     def clean_up_disappeared(self):
         """Remove retained config messages from mqtt server if not in recent device list."""
         if self._old_devices_config_topics:
             for config_topic in (
                 self._old_devices_config_topics - self._devices_config_topics
             ):
-                ret_val = self._client.publish(config_topic, None, retain=True)
+                self.publish(config_topic, None, retain=True)
                 _LOGGER.info(
-                    "Removing retained topic %s%s", config_topic, convert_ret_val(ret_val)
+                    "Removing retained topic %s", config_topic
                 )
         self._old_devices_config_topics = self._devices_config_topics
         self._config_topics_published = 0
@@ -365,49 +501,59 @@ class ChirpToHA:
     def on_message(self, client, userdata, message):
         """Process subscribed messages."""
         self._last_update = datetime.datetime.now(UTC_TIMEZONE)
+        payload = message.payload.decode("utf-8")
+        _LOGGER.detail("MQTT message received: topic %s, payload %s, retain=%s", message.topic, payload, message.retain)
         if message.topic == self._bridge_state_topic:
-            _LOGGER.info("Bridge status message received, retain=%s ", message.retain)
+            self._bridge_state_received = True
+            _LOGGER.info("Bridge state message received")
+            try:
+                logging.getLogger().setLevel(json.loads(payload).get("log_level").upper())
+            except Exception as error:
+                _LOGGER.error("Bridge state message processing failed: %s", str(error))
         elif message.topic == self._bridge_restart_topic:
             _LOGGER.info(
-                "Restart requested, starting devices re-registration (retain=%s).",
-                message.retain,
+                "Bridge restart requested"
             )
             self._bridge_config_topics_published = 0    # enables value restoration
             self.reload_devices()
+        elif message.topic == self._bridge_live_topic:
+            _LOGGER.debug("Bridge device live status update requested")
+            if payload == "start":
+                self._live_on = True
+                self.enable_cur()
         elif message.topic == self._ha_status:
-            payload = message.payload.decode("utf-8")
             if payload == "online":
                 self._ha_online_event.set()
-                ret_val = self._client.publish( self._initialize_topic, "configure" )
+                self.publish( self._initialize_topic, "configure" )
                 _LOGGER.info(
-                    "HA online, publishing bridge setup 'configure' message (retain=%s)",
-                    message.retain,
+                    "HA online, continuing configuration"
                 )
             elif payload == "offline":
                 _LOGGER.info(
-                    "HA offline message received, ready for re-initialization.",
+                    "HA offline message received",
                 )
 
         elif message.topic == self._initialize_topic:
-            payload = message.payload.decode("utf-8")
             _LOGGER.info(
                 "Bridge setup '%s' message received",
                 payload
             )
             if payload == "initialize":
                 self._wait_for_ha_online.start()
+                if self._per_device_online:
+                    self._wait_for_dev_check.start()
+                    _LOGGER.info("Periodic device check task started for %s minute(s) interval", self._per_device_chk_interval)
             else: # configure
-                self._client.subscribe(self._bridge_state_topic)
-                self._client.subscribe(self._bridge_restart_topic)
-                self._client.subscribe(
+                self.subscribe(self._bridge_state_topic)
+                self.subscribe(self._bridge_restart_topic)
+                self.subscribe(
                     f"application/{self._application_id}/device/+/event/up"
                 )
-                self._client.subscribe(f"{self._discovery_prefix}/+/+/+/config")
+                self.subscribe(f"{self._discovery_prefix}/+/+/+/config")
                 self.start_bridge()
                 self.reload_devices()
         else:
             subtopics = message.topic.split("/")
-            payload = message.payload.decode("utf-8")
             payload_struct = json.loads(payload) if len(payload) > 2 else None
             if payload_struct:
                 time_stamp = payload_struct.get("time_stamp")
@@ -418,10 +564,6 @@ class ChirpToHA:
                         == self._bridge_indentifier
                     ):
                         _LOGGER.info(f"Registration message with time stamp {time_stamp} received for device {subtopics[2]} sensor {subtopics[1]}")
-                        if self._print_payload:
-                            _LOGGER.debug(
-                                "MQTT registration message received: MQTT payload %s", payload
-                            )
                         self._old_devices_config_topics.add(message.topic)
                         if (
                             time_stamp and float(time_stamp) >= self._bridge_init_time
@@ -432,8 +574,6 @@ class ChirpToHA:
                 elif subtopics[-1] == "cur":
                     dev_eui = subtopics[-3]
                     _LOGGER.info("Cached values received for device %s", dev_eui)
-                    if self._print_payload:
-                        _LOGGER.debug("Cached values received MQTT payload %s", payload)
                     _LOGGER.debug(
                         "Cached values payload time %s, bridge time %s, cached object %s, value cache %s",
                         time_stamp,
@@ -445,37 +585,23 @@ class ChirpToHA:
                         time_stamp and float(time_stamp) < self._bridge_init_time
                     ):
                         if dev_eui not in self._values_cache:
-                            ret_val = self._client.publish(message.topic, None, retain=True)
+                            self.publish(message.topic, None, retain=True)
                             _LOGGER.debug(
-                                "Value cache removal topic %s published%s",
+                                "Value cache removal topic %s published",
                                 message.topic,
-                                convert_ret_val(ret_val),
                             )
-                        elif self._values_cache[dev_eui] == {}:
-                            self._values_cache[dev_eui] = self.join_filtered_messages(
-                                {}, payload_struct, self._top_level_msg_names
-                            )
+                        elif self._values_cache[dev_eui] == {} and time_stamp < self._cur_open_time:
                             ret_val = self.publish_value_cache_record(
-                                subtopics, "up", self._values_cache[dev_eui]
+                                subtopics, "up", dev_eui, payload_struct
+                            )
+                    if self._live_on and time_stamp < self._cur_open_time:
+                        self.publish_value_cache_record(
+                                subtopics, "cur", dev_eui, payload_struct
                             )
                     cache_not_retrieved = len(
                         [dev_id for dev_id, val in self._values_cache.items() if val == {}]
                     )
-                    _LOGGER.debug("%s devices cached values not processed", cache_not_retrieved)
-                    if (
-                        time.time() - self._cur_open_time >= self._cur_age
-                        or cache_not_retrieved == 0
-                    ):
-                        ret_val = self._client.unsubscribe(self._sub_cur_topic)
-                        _LOGGER.info(
-                            "Unsubscribed from retained values topic%s",
-                            convert_ret_val(ret_val),
-                        )
-                        _LOGGER.debug(
-                            "Not processed retained devices %s, processing age %s(s)",
-                            cache_not_retrieved,
-                            time.time() - self._cur_open_time,
-                        )
+                    _LOGGER.debug("%s device(s) cached values not processed", cache_not_retrieved)
                 elif subtopics[-1] == "up":
                     dev_eui = subtopics[-3]
                     if (
@@ -487,8 +613,8 @@ class ChirpToHA:
                             payload_struct,
                             self._top_level_msg_names,
                         )
-                        ret_val = self.publish_value_cache_record(
-                            subtopics, "cur", self._values_cache[dev_eui], retain=True
+                        self.publish_value_cache_record(
+                            subtopics, "cur", dev_eui, payload_struct, retain=True
                         )
             else:
                 _LOGGER.info(
@@ -511,46 +637,51 @@ class ChirpToHA:
         if self._bridge_config_topics_published == 0:
             self._bridge_config_topics_published = -1
             time.sleep(self._discovery_delay)
-            self._cur_open_time = time.time()
-            ret_val = self._client.subscribe(self._sub_cur_topic)
-            _LOGGER.info(
-                "Subscribed to retained values topic%s",
-                convert_ret_val(ret_val),
-            )
-            for restore_message in self._messages_to_restore_values:
-                ret_val = self._client.publish(*restore_message)
-                _LOGGER.info(
-                    f"Previous sensor values restored for device {restore_message[0].split('/')[3]}%s",
-                    convert_ret_val(ret_val),
+            if not self._bridge_state_received:
+                self.publish(
+                    self._bridge_state_topic, f'{{"state": "online", "log_level": "{self._config.get(CONF_OPTIONS_LOG_LEVEL)}"}}', retain=True
                 )
-                if self._print_payload:
-                    _LOGGER.debug(
-                        "Previous sensor values restored. MQTT payload %s",
-                        restore_message[1],
-                    )
+                _LOGGER.info(
+                    "Bridge state turned on, log level %s",
+                    self._config.get(CONF_OPTIONS_LOG_LEVEL),
+                )
+            self.enable_cur()
+            for restore_message in self._messages_to_restore_values:
+                self.publish(*restore_message)
+                _LOGGER.info(
+                    f"Previous sensor values restored for device {restore_message[0].split('/')[3]}",
+                )
             self._messages_to_restore_values = []
 
     def publish_value_cache_record(
-        self, topic_array, topic_suffix, payload_struct, retain=False
+        self, topic_array, topic_suffix, dev_eui, payload_struct, retain=False
     ):
         """Publish sensor value to values cache message."""
-        topic_int = topic_array.copy()
-        topic_int[-1] = topic_suffix
-        payload_struct["time_stamp"] = time.time()
-        publish_topic = "/".join(topic_int)
-        ret_val = self._client.publish(
-            publish_topic, json.dumps(payload_struct), retain=retain
+
+        self._values_cache[dev_eui] = self.join_filtered_messages(
+            self._values_cache[dev_eui],
+            payload_struct,
+            self._top_level_msg_names,
         )
-        _LOGGER.debug(
-            f"Cached values published for device {publish_topic.split("/")[3]}%s",
-            convert_ret_val(ret_val),
-        )
-        if self._print_payload:
-            _LOGGER.debug(
-                "Cached values related MQTT payload %s published with code %s",
-                payload_struct,
-                convert_ret_val(ret_val),
+        payload_struct = self._values_cache[dev_eui]
+
+        if len(payload_struct) or topic_suffix == "cur":
+            topic_int = topic_array.copy()
+            topic_int[-1] = topic_suffix
+            payload_struct["time_stamp"] = time.time()
+            publish_topic = "/".join(topic_int)
+            if topic_suffix == "cur":
+                payload_struct = payload_struct.copy()
+                payload_struct["status"] = self.get_device_status(dev_eui)
+
+            ret_val = self.publish(
+                publish_topic, json.dumps(payload_struct), retain=retain
             )
+            _LOGGER.info(
+                f"Cached values published for device {topic_int[3]} and topic {topic_suffix} {publish_topic}",
+            )
+        else:
+            ret_val = (0,0)
         return ret_val
 
     def join_filtered_messages(self, message_o, message_n, levels_filter):
@@ -608,6 +739,15 @@ class ChirpToHA:
             mqtt_integration = sensor.get("integration")
         return f"{self._discovery_prefix}/{mqtt_integration}/{dev_conf['dev_eui']}/{dev_id}/config"
 
+    def get_availability_element(self, dev_id, sensor, device, dev_conf):
+        if self._per_device_online:
+            availability_elements = self._availability_element.copy()
+            for availability_element in availability_elements:
+                availability_element["topic"] = f"application/{self._application_id}/device/{dev_conf['dev_eui']}/event/cur"
+            return availability_elements
+        else:
+            return self._availability_element
+
     def get_conf_data(self, dev_id, sensor, device, dev_conf):
         """Prepare discovery payload."""
         discovery_topic = self.get_discovery_topic(dev_id, sensor, device, dev_conf)
@@ -623,7 +763,7 @@ class ChirpToHA:
                 to_lower_case_no_blanks(BRIDGE_VENDOR + "_" + dev_conf["dev_eui"])
             ]
             discovery_config["device"]["via_device"] = self._bridge_indentifier
-            discovery_config["availability"] = self._availability_element
+            discovery_config["availability"] = self.get_availability_element(dev_id, sensor, device, dev_conf)
         discovery_config["origin"] = self._origin
         if not discovery_config.get("state_topic"):
             discovery_config["state_topic"] = status_topic
@@ -653,7 +793,8 @@ class ChirpToHA:
             if "{dev_eui}" in value:
                 discovery_config[key] = value.replace( "{dev_eui}", dev_conf["dev_eui"] )
         discovery_config["enabled_by_default"] = True
-        discovery_config["time_stamp"] = self._bridge_init_time
+        if self._bridge_init_time:
+            discovery_config["time_stamp"] = self._bridge_init_time
         return {
             "discovery_config_struct": discovery_config,
             "discovery_config": json.dumps(discovery_config),
@@ -664,4 +805,8 @@ class ChirpToHA:
 
     def close(self):
         """Close recent session."""
+        self._ha_online_event.set()
+        self._cur_delay_event.set()
+        self._dev_check_event.set()
+
         self._client.disconnect()

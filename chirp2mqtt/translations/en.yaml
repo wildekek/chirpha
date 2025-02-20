@@ -1,36 +1,12 @@
 configuration:
-  chirpstack_api_server:
-    name: ChirpStack API server
-    description: >-
-      ChirpStack API server
-  server_port:
-    name: ChirpStack API server port
-    description: >-
-      ChirpStack API server port, defaults to 8080
-  api_connection_key:
-    name: API connection key
-    description: >-
-      ChirpStack API connection key
   tenant:
     name: Tenant
     description: >-
       Tenant created on ChirpStack server
-  application_name:
-    name: Application name
-    description: >-
-      Tenant's application to group LoraWAN devices for integration
   application_id:
     name: Application ID
     description: >-
       Tenant's application ID to group LoraWAN devices for integration
-  mqtt_server:
-    name: MQTT server
-    description: >-
-      MQTT server to serve LoraWAN device communication traffic
-  mqtt_port:
-    name: MQTT server port
-    description: >-
-      MQTT server port, default 1883
   mqtt_user:
     name: MQTT user name
     description: >-
@@ -51,10 +27,18 @@ configuration:
     name: Restore age
     description: >-
       Sensor stored value restore age -
-  options_debug_print_payload:
-    name: Print Payload
+  options_online_per_device:
+    name: Time interval to check device status
     description: >-
-      Enable/disable additional debug printouts: if enabled logs include messsage payload
+      Time interval in minutes to check device online/offline status on ChirpStack server, if set 0 all devices will be considered online all the time
+  options_log_level:
+    name: Log level
+    description: >-
+      Sets starting log level
+  database_actions:
+    name: ChirpStack database actions
+    description: >-
+      Request ChirpStack database backup and/or restore to HA /share/chirp2mqtt folder
 network:
   8080/tcp: ChirpStack server WEB UI port
   1700/udp: Port to receive LoraWAN packets
