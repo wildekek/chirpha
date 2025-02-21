@@ -19,3 +19,7 @@
 ## 1.1.126
 
 - Added logging control via MQTT message: topic application/{ChirpStack appId}/bridge/info, message '{"log_level":"debug"}'. Added per device online checks. Initialization and logging re-factoring
+
+## 1.1.127
+
+- Added optional expire after MQTT configuration item discovery message

@@ -81,11 +81,17 @@ Time period in minutes used for device online checks. 0 value disables online ch
 
 Default value: 0 .
 
+### Option: `options_add_expire_after`
+
+Switch to enable expire after setting for MQTT, time value is taken from device profile uplink interval. 'expire_after' still could be set in getHaDeviceInfo and using value {None} removes setting from discovery message.
+
+Default value: false/off .
+
 ### Option: `database_actions`
 
 ChirpStack database actions, one of 'None', 'Backup', 'Restore', 'Backup and restore' . 'Backup' - add-on takes database backup and stores it in /share/chirp2mqtt/chirp_db file and freeze execution. 'Restore' - restores database from /share/chirp2mqtt/chirp_db, renames backup file to chirp_db.restored and add-on continues service. 'Backup and restore' combines both 'Backup' and 'Restore': firstly applied creates backup file and stops; on second add-on start restores database and continues service. Last option might be handy to switch between add-on builds with different versions of Postgresql.
 
-Default value: 'info' .
+Default value: 'None' .
 
 ## Support
 

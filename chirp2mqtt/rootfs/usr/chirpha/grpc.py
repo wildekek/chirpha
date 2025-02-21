@@ -202,7 +202,7 @@ class ChirpGrpc:
                     discovery_config[
                         "value_template"
                     ] = f"{{{{ value_json.object.{entity} }}}}"
-                #discovery_config["uplink_interval"] = profile.device_profile.uplink_interval
+                discovery_config["uplink_interval"] = profile.device_profile.uplink_interval
                 #discovery_config["device_status_req_interval"] = profile.device_profile.device_status_req_interval
 
             mac_version = (

@@ -15,7 +15,7 @@ from chirpha.const import (
 )
 import chirpha.start as chirpha
 from chirpha.start import INTERNAL_CONFIG
-from chirpha.const import CONF_OPTIONS_LOG_LEVEL
+from chirpha.const import CONF_OPTIONS_LOG_LEVEL, BRIDGE_CONF_COUNT
 
 from .patches import api, message, mqtt, set_size, get_size, insecure_channel
 
@@ -28,8 +28,9 @@ NO_APP_CONFIGURATION_FILE ="test_configuration_no_app.json"
 WITH_DELAY_CONFIGURATION_FILE ="test_configuration_delay.json"
 REGULAR_CONFIGURATION_FILE_INFO_NO_MQTT ="test_configuration_info_log_no_mqtt.json"
 REGULAR_CONFIGURATION_FILE_DEBUG_NO_MQTT ="test_configuration_debug_log_no_mqtt.json"
-REGULAR_CONFIGURATION_PER_DEVICE ="test_configuration_per_devoce.json"
+REGULAR_CONFIGURATION_PER_DEVICE ="test_configuration_per_device.json"
 REGULAR_CONFIGURATION_NONZERO_DELAYS ="test_configuration_nonzero_delays.json"
+REGULAR_CONFIGURATION_EXPIRE_AFTER ="test_configuration_expire_after.json"
 MIN_SLEEP = 0.1
 
 # pytest tests/components/chirp/
@@ -95,7 +96,7 @@ def chirp_setup_and_run_test(caplog, run_test_case, conf_file=REGULAR_CONFIGURAT
                         time.sleep(0.1)
                     #print("ooooooo ", no_ha_online, i, ha_online, 1 if not no_ha_online else 0, bridge_config, bridge_online, config_topics)
                     assert ha_online == (1 if not no_ha_online else 0)   # 1 message conditionally sent from test environment
-                    assert bridge_config == 3
+                    assert bridge_config == BRIDGE_CONF_COUNT
                     assert bridge_online == 1
 
                 if run_test_case:

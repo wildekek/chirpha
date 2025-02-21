@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 from typing import Final
 import threading
+import traceback
 
 from .grpc import ChirpGrpc
 from .mqtt import ChirpToHA
@@ -54,7 +55,7 @@ class run_chirp_ha:
         threading.excepthook = self.subthread_failed
 
     def subthread_failed(self, args):
-        _LOGGER.error("Chirp failed: %s", args.exc_value)
+        _LOGGER.error("Chirp failed: %s : %s", args.exc_value, traceback.format_tb(args.exc_traceback))
         self.close_mqtt_loop()
 
     def stop_chirp_ha(self, signum, frame):

@@ -39,6 +39,7 @@ from .const import (
     BRIDGE_LOGLEVEL_NAME,
     CONF_OPTIONS_ONLINE_PER_DEVICE,
     CONF_OPTIONS_LOG_LEVEL,
+    CONF_OPTIONS_EXPIRE_AFTER,
 )
 from .grpc import ChirpGrpc
 
@@ -119,6 +120,7 @@ class ChirpToHA:
         self._bridge_init_time = None
         self._cur_open_time = None
         self._live_on = False
+        self._expire_after = self._config.get(CONF_OPTIONS_EXPIRE_AFTER)
         self._bridge_state_received = False
         self._per_device_chk_interval = float(self._config.get(CONF_OPTIONS_ONLINE_PER_DEVICE))
         self._per_device_online = self._per_device_chk_interval!=0
@@ -780,6 +782,8 @@ class ChirpToHA:
             discovery_config["object_id"] = to_lower_case_no_blanks(
                 dev_conf["dev_eui"] + "_" + dev_id
             )
+        if self._expire_after and discovery_config.get("uplink_interval") and not discovery_config.get("expire_after"):
+            discovery_config["expire_after"] = discovery_config["uplink_interval"]
         discovery_config_enum = discovery_config.copy()
         for key, value in discovery_config_enum.items():
             if not isinstance(value, str):

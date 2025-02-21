@@ -22,6 +22,7 @@ CONF_OPTIONS_RESTORE_AGE = "options_restore_age"
 DEFAULT_OPTIONS_RESTORE_AGE = 4
 CONF_OPTIONS_LOG_LEVEL = "options_log_level"
 CONF_OPTIONS_ONLINE_PER_DEVICE = "options_online_per_device"
+CONF_OPTIONS_EXPIRE_AFTER = "options_add_expire_after"
 
 CHIRPSTACK_TENANT = "HA owned"
 CHIRPSTACK_APPLICATION = "HA integration"

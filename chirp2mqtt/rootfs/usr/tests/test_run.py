@@ -13,6 +13,7 @@ from tests.common import PAYLOAD_PRINT_CONFIGURATION_FILE, REGULAR_CONFIGURATION
 from tests.common import REGULAR_CONFIGURATION_FILE_ERROR, CONF_MQTT_DISC, WITH_DELAY_CONFIGURATION_FILE
 from tests.common import REGULAR_CONFIGURATION_FILE_INFO_NO_MQTT, REGULAR_CONFIGURATION_FILE_DEBUG_NO_MQTT
 from tests.common import REGULAR_CONFIGURATION_FILE_WRONG_LOG_LEVEL, REGULAR_CONFIGURATION_PER_DEVICE, REGULAR_CONFIGURATION_NONZERO_DELAYS
+from tests.common import REGULAR_CONFIGURATION_EXPIRE_AFTER
 from tests.common import MIN_SLEEP
 
 def test_ha_status_received(caplog):
@@ -469,3 +470,39 @@ def test_init_live_overlapping(caplog):
         assert filtered_log[5].msg == unsubscribe   # done
 
     common.chirp_setup_and_run_test(caplog, run_test_init_live_overlapping, test_params=dict(devices=1, codec=1), conf_file=REGULAR_CONFIGURATION_NONZERO_DELAYS, allowed_msg_level=logging.WARNING)
+
+def test_expire_after(caplog):
+    """Test request to update device status via publishing live status message."""
+
+    def run_test_expire_after(config):
+        time.sleep(MIN_SLEEP+MIN_SLEEP)
+        config_topics = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).get_published(keep_history=True)
+        print("----------", config_topics)
+        no_per_dev = common.count_messages(r'/config$', '"expire_after":', keep_history=True)    # to be received as subscribed
+        assert no_per_dev == mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).stat_sensors
+
+    common.chirp_setup_and_run_test(caplog, run_test_expire_after, test_params=dict(devices=1, codec=0), conf_file=REGULAR_CONFIGURATION_EXPIRE_AFTER, allowed_msg_level=logging.WARNING)
+
+def test_expire_after_with_none(caplog):
+    """Test request to update device status via publishing live status message."""
+
+    def run_test_expire_after_with_none(config):
+        time.sleep(MIN_SLEEP+MIN_SLEEP)
+        config_topics = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).get_published(keep_history=True)
+        print("----------", config_topics)
+        no_per_dev = common.count_messages(r'/config$', '"expire_after":', keep_history=True)    # to be received as subscribed
+        assert no_per_dev == 0
+
+    common.chirp_setup_and_run_test(caplog, run_test_expire_after_with_none, test_params=dict(devices=1, codec=20), conf_file=REGULAR_CONFIGURATION_EXPIRE_AFTER, allowed_msg_level=logging.WARNING)
+
+def test_not_expire_after(caplog):
+    """Test sensor device status configuration for not per device checks."""
+
+    def run_test_not_expire_after(config):
+        time.sleep(MIN_SLEEP+MIN_SLEEP)
+        no_per_dev = common.count_messages(r'/config$', '"expire_after":', keep_history=True)    # to be received as subscribed
+        no_no_per_dev = common.count_messages(r'/config$', '{"topic": "application/.*/bridge/status", "value_template": "{{ value_json.state }}', keep_history=True)    # to be received as subscribed
+        assert no_per_dev == 0
+        assert no_no_per_dev == mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).stat_sensors
+
+    common.chirp_setup_and_run_test(caplog, run_test_not_expire_after, test_params=dict(devices=1, codec=0), allowed_msg_level=logging.WARNING)

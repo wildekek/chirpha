@@ -6,5 +6,6 @@
     "options_start_delay": 0.5,
     "options_restore_age": 0.5,
     "options_online_per_device": 0.025,
+    "options_add_expire_after": false,
     "options_log_level": "debug"
 }

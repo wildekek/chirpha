@@ -31,6 +31,10 @@ configuration:
     name: Time interval to check device status
     description: >-
       Time interval in minutes to check device online/offline status on ChirpStack server, if set 0 all devices will be considered online all the time
+  options_add_expire_after:
+    name: Add 'expire_after' configuration item to MQTT discovery message
+    description: >-
+      Enabled forces to add 'expire_after' configuration item to MQTT discovery message with expiration period equal to ChirpStack device profile's uplink interval
   options_log_level:
     name: Log level
     description: >-
