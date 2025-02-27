@@ -412,17 +412,30 @@ def test_device_status_refresh(caplog):
         assert no_of_cur_msgs_off == 1
         assert no_of_cur_msgs_on == 1
 
-    common.chirp_setup_and_run_test(caplog, run_test_device_status_refresh, test_params=dict(devices=1, codec=0), conf_file=PAYLOAD_PRINT_CONFIGURATION_FILE, allowed_msg_level=logging.WARNING)
+    common.chirp_setup_and_run_test(caplog, run_test_device_status_refresh, test_params=dict(devices=1, codec=0), conf_file=REGULAR_CONFIGURATION_PER_DEVICE, allowed_msg_level=logging.WARNING)
 
 def test_per_device_online(caplog):
     """Test request to update device status via publishing live status message."""
 
     def run_test_per_device_online(config):
         time.sleep(MIN_SLEEP+MIN_SLEEP)
-        config_topics = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).get_published(keep_history=True)
-        print("----------", config_topics)
         no_per_dev = common.count_messages(r'/config$', '{"topic": "application/.*/device/.*/event/cur", "value_template": "{{ value_json.state }}', keep_history=True)    # to be received as subscribed
         assert no_per_dev == mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).stat_sensors
+
+        mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).get_published()
+        for i in range(0, mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).stat_devices):
+            dev_eui = f"dev_eui{i}"
+            topic = f"application/{config.get(CONF_APPLICATION_ID)}/device/{dev_eui}/event/up"
+            msg = f'{{"batteryLevel": 76}}'
+            mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).publish(topic, msg)
+        mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).wait_empty_queue()
+        no_per_dev = common.count_messages(r'/config$', '{"topic": "application/.*/device/.*/event/cur", "value_template": "{{ value_json.state }}', keep_history=True)    # to be received as subscribed
+        no_of_up_msgs = common.count_messages(r'/device/.*/up$', None, keep_history=True)    # should not show up due to time stamp
+        assert no_of_up_msgs == mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).stat_devices
+        no_of_cur_msgs = common.count_messages(r'/device/.*/cur$', None, keep_history=True)    # should not show up due to time stamp
+        no_of_cur_msgs_with_status = common.count_messages(r'/device/.*/cur$', '"status": "', keep_history=True)    # should not show up due to time stamp
+        assert no_of_cur_msgs == mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).stat_devices
+        assert no_of_cur_msgs_with_status == mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).stat_devices
 
     common.chirp_setup_and_run_test(caplog, run_test_per_device_online, test_params=dict(devices=1, codec=0), conf_file=REGULAR_CONFIGURATION_PER_DEVICE, allowed_msg_level=logging.WARNING)
 
@@ -435,6 +448,21 @@ def test_not_per_device_online(caplog):
         no_no_per_dev = common.count_messages(r'/config$', '{"topic": "application/.*/bridge/status", "value_template": "{{ value_json.state }}', keep_history=True)    # to be received as subscribed
         assert no_no_per_dev == mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).stat_sensors
         assert no_per_dev == 0
+
+        mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).get_published()
+        for i in range(0, mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).stat_devices):
+            dev_eui = f"dev_eui{i}"
+            topic = f"application/{config.get(CONF_APPLICATION_ID)}/device/{dev_eui}/event/up"
+            msg = f'{{"batteryLevel": 76}}'
+            mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).publish(topic, msg)
+        mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).wait_empty_queue()
+        no_per_dev = common.count_messages(r'/config$', '{"topic": "application/.*/device/.*/event/cur", "value_template": "{{ value_json.state }}', keep_history=True)    # to be received as subscribed
+        no_of_up_msgs = common.count_messages(r'/device/.*/up$', None, keep_history=True)    # should not show up due to time stamp
+        assert no_of_up_msgs == mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).stat_devices
+        no_of_cur_msgs = common.count_messages(r'/device/.*/cur$', None, keep_history=True)    # should not show up due to time stamp
+        no_of_cur_msgs_with_status = common.count_messages(r'/device/.*/cur$', '"status": "', keep_history=True)    # should not show up due to time stamp
+        assert no_of_cur_msgs == mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).stat_devices
+        assert no_of_cur_msgs_with_status == 0
 
     common.chirp_setup_and_run_test(caplog, run_test_not_per_device_online, test_params=dict(devices=1, codec=0), allowed_msg_level=logging.WARNING)
 

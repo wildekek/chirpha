@@ -509,7 +509,7 @@ class api:
             request.device.name = f"device_name{dev_no}"
             request.device.device_profile_id = f"device_profile_id{dev_no}"
             request.device.is_disabled = get_size("disabled")
-            if getdevcount[0] == 0:
+            if getdevcount[0] <= 1:
                 request.last_seen_at = ""
             else:
                 request.last_seen_at = lambda: None

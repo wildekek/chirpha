@@ -672,14 +672,14 @@ class ChirpToHA:
             topic_int[-1] = topic_suffix
             payload_struct["time_stamp"] = time.time()
             publish_topic = "/".join(topic_int)
-            if topic_suffix == "cur":
+            if topic_suffix == "cur" and self._per_device_online:
                 payload_struct = payload_struct.copy()
                 payload_struct["status"] = self.get_device_status(dev_eui)
 
             ret_val = self.publish(
                 publish_topic, json.dumps(payload_struct), retain=retain
             )
-            _LOGGER.info(
+            _LOGGER.debug(
                 f"Cached values published for device {topic_int[3]} and topic {topic_suffix} {publish_topic}",
             )
         else:

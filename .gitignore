@@ -7,4 +7,5 @@ chirptoha
 chirpversion
 chirpwebtoha
 stopchirpstack
+get_chirp_tomls
 .vscode/
