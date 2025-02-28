@@ -57,11 +57,16 @@ sed -i -r  's|password.*=.*".*"|password = "'$MQTT_PASSWORD'"|' /etc/chirpstack/
 sed -i -r  's|password.*=.*".*"|password = "'$MQTT_PASSWORD'"|' /etc/chirpstack/region_*.toml
 sed -i -r  's|password.*=.*".*"|password = "'$MQTT_PASSWORD'"|' /etc/chirpstack-gateway-bridge/chirpstack-gateway-bridge.toml
 
-# set region chirpstack and gateway configuration files
+# set region in chirpstack and gateway configuration files
 LORA_REGION=$(jq --raw-output '.lora_region // empty' $CONFILE)
 sed -i 's|"eu868"|"'$LORA_REGION'"|' /etc/chirpstack/chirpstack.toml
 sed -i 's|eu868/|'$LORA_REGION'/|' /etc/chirpstack-gateway-bridge/chirpstack-gateway-bridge.toml
 echo Lora region $LORA_REGION selected
+
+# set secret in chirpstack configuration file
+CHIRPSTACK_SECRET=$(jq --raw-output '.chirpstack_secret // empty' $CONFILE)
+sed -i -r  's|secret.*=.*".*"|secret = "'$CHIRPSTACK_SECRET'"|' /etc/chirpstack/chirpstack.toml
+echo ChirpStack secret $CHIRPSTACK_SECRET
 
 DB_ACTION=$(jq --raw-output '.database_actions // empty' $CONFILE)
 echo Database action: $DB_ACTION

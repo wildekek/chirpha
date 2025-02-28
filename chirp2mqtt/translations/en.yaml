@@ -47,6 +47,10 @@ configuration:
     name: Select Lora region
     description: >-
       Select Lora region to use for ChirpStack LoraWan device communication
+  chirpstack_secret:
+    name: ChirpStack secret
+    description: >-
+      String used by ChirpStack to generate login and API tokens
 network:
   8080/tcp: ChirpStack server WEB UI port
   1700/udp: Port to receive LoraWAN packets
