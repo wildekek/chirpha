@@ -23,3 +23,7 @@
 ## 1.1.127
 
 - Added optional expire after MQTT configuration item discovery message
+
+## 1.1.128
+
+- Added LORA region selection to configuratiom, fixed missinging MQTT user/password propagation to ChirpStack components (defaults were used always)

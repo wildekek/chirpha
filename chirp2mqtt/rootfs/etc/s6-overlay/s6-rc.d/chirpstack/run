@@ -45,8 +45,28 @@ restore_db() {
     fi
 }
 
-grep '"database_actions".*:.*"Backup and restore"' $CONFILE
-if [ $? -eq 0 ]; then
+# set user name in chirpstack/bridge and region configuration files
+MQTT_USER=$(jq --raw-output '.mqtt_user // empty' $CONFILE)
+sed -i -r  's|username.*=.*".*"|username = "'$MQTT_USER'"|' /etc/chirpstack/chirpstack.toml
+sed -i -r  's|username.*=.*".*"|username = "'$MQTT_USER'"|' /etc/chirpstack/region_*.toml
+sed -i -r  's|username.*=.*".*"|username = "'$MQTT_USER'"|' /etc/chirpstack-gateway-bridge/chirpstack-gateway-bridge.toml
+
+# set password in chirpstack/bridge and region configuration files
+MQTT_PASSWORD=$(jq --raw-output '.mqtt_password // empty' $CONFILE)
+sed -i -r  's|password.*=.*".*"|password = "'$MQTT_PASSWORD'"|' /etc/chirpstack/chirpstack.toml
+sed -i -r  's|password.*=.*".*"|password = "'$MQTT_PASSWORD'"|' /etc/chirpstack/region_*.toml
+sed -i -r  's|password.*=.*".*"|password = "'$MQTT_PASSWORD'"|' /etc/chirpstack-gateway-bridge/chirpstack-gateway-bridge.toml
+
+# set region chirpstack and gateway configuration files
+LORA_REGION=$(jq --raw-output '.lora_region // empty' $CONFILE)
+sed -i 's|"eu868"|"'$LORA_REGION'"|' /etc/chirpstack/chirpstack.toml
+sed -i 's|eu868/|'$LORA_REGION'/|' /etc/chirpstack-gateway-bridge/chirpstack-gateway-bridge.toml
+echo Lora region $LORA_REGION selected
+
+DB_ACTION=$(jq --raw-output '.database_actions // empty' $CONFILE)
+echo Database action: $DB_ACTION
+
+if [ "$DB_ACTION" = "Backup and restore" ]; then
     if [ -f "$BACKUPDONE" ]; then
         restore_db
     else
@@ -58,13 +78,11 @@ if [ -f "$BACKUPDONE" ]; then
     rm $BACKUPDONE
 fi
 
-grep '"database_actions".*:.*"Restore"' $CONFILE
-if [ $? -eq 0 ]; then
+if [ "$DB_ACTION" = "Restore" ]; then
     restore_db
 fi
 
-grep '"database_actions".*:.*"Backup"' $CONFILE
-if [ $? -eq 0 ]; then
+if [ "$DB_ACTION" = "Backup" ]; then
     backup_db
 fi
 

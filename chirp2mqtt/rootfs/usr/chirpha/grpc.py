@@ -64,19 +64,7 @@ class ChirpGrpc:
             _LOGGER.warning(WARMSG_APPID_WRONG, self._application_id, application_id, tenant, application)
             self._application_id = application_id
         self.js_interpreter = dukpy.JSInterpreter()
-#        self.api_key_cleanup(CHIRPSTACK_API_KEY_NAME, self._token_id, tenant_id)
         _LOGGER.info("ChirpStack application ID %s", self._application_id)
-
-    def api_key_cleanup(self, api_key_name, api_key_id, tenant_id):
-        """Remove unneeded api keys"""
-        api_keys = api.InternalServiceStub(self._channel)
-        listApiKeysReq = api.ListApiKeysRequest()
-        listApiKeysReq.tenant_id = tenant_id
-        listApiKeysReq.limit = 10
-#        listApiKeysReq.offset = 0
-        apiKeysResp = api_keys.ListApiKeys(listApiKeysReq, metadata=self._auth_token)
-        listApiKeysReq.limit = apiKeysResp.total_count
-        apiKeysResp = api_keys.ListApiKeys(listApiKeysReq, metadata=self._auth_token)
 
     def get_chirp_tenants(self):
         """Get tenant list from api server, build name/id dictionary and return."""
@@ -203,7 +191,6 @@ class ChirpGrpc:
                         "value_template"
                     ] = f"{{{{ value_json.object.{entity} }}}}"
                 discovery_config["uplink_interval"] = profile.device_profile.uplink_interval
-                #discovery_config["device_status_req_interval"] = profile.device_profile.device_status_req_interval
 
             mac_version = (
                 profile.device_profile.DESCRIPTOR.fields_by_name["mac_version"]

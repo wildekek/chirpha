@@ -402,6 +402,7 @@ def test_device_status_refresh(caplog):
             msg = f'{{"time_stamp":{time.time()-4},"status": "offlinex", "batteryLevel": 77}}'
             mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).publish(topic, msg)
         mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).wait_empty_queue()
+        time.sleep(MIN_SLEEP)
         no_of_live_msgs = common.count_messages(r'/bridge/live$', None, keep_history=True)    # to be received as subscribed
         no_of_cur_msgs = common.count_messages(r'/device/.*/cur$', None, keep_history=True)    # to be received as subscribed
         no_of_cur_msgs_off = common.count_messages(r'/device/.*/cur$', '"status": "offline"', keep_history=True)    # to be received as subscribed

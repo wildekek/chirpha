@@ -36,6 +36,7 @@ options:
   options_add_expire_after: false
   options_log_level: "info"
   database_actions: "None"
+  lora_region: "eu868"
 schema:
   application_id: "str"
   mqtt_user: "str"
@@ -47,6 +48,7 @@ schema:
   options_add_expire_after: "bool"
   options_log_level: "list(detail|debug|info|warning|error|fatal|critical)?"
   database_actions: "list(None|Backup|Restore|Backup and restore)?"
+  lora_region: "list(eu868|as923_2|as923_3|as923_4|as923|au915_0|au915_1|au915_2|au915_3|au915_4|au915_5|au915_6|au915_7|cn470_0|cn470_10|cn470_11|cn470_1|cn470_2|cn470_3|cn470_4|cn470_5|cn470_6|cn470_7|cn470_8|cn470_9|cn779|eu433|in865|ism2400|kr920|ru864|us915_0|us915_1|us915_2|us915_3|us915_4|us915_5|us915_6|us915_7)?"
 timeout: 10
 services:
   - mqtt:need

@@ -43,6 +43,10 @@ configuration:
     name: ChirpStack database actions
     description: >-
       Request ChirpStack database backup and/or restore to HA /share/chirp2mqtt folder
+  lora_region:
+    name: Select Lora region
+    description: >-
+      Select Lora region to use for ChirpStack LoraWan device communication
 network:
   8080/tcp: ChirpStack server WEB UI port
   1700/udp: Port to receive LoraWAN packets
