@@ -769,11 +769,12 @@ class ChirpToHA:
         discovery_config["origin"] = self._origin
         if not discovery_config.get("state_topic"):
             discovery_config["state_topic"] = status_topic
-        discovery_config["name"] = (
-            dev_conf["measurement_names"][dev_id]
-            if dev_conf["measurement_names"].get(dev_id)
-            else dev_id
-        )
+        if not discovery_config.get("name"):
+            discovery_config["name"] = (
+                dev_conf["measurement_names"][dev_id]
+                if dev_conf["measurement_names"].get(dev_id)
+                else dev_id
+            )
         if not discovery_config.get("unique_id"):
             discovery_config["unique_id"] = to_lower_case_no_blanks(
                 BRIDGE_VENDOR + "_" + dev_conf["dev_eui"] + "_" + dev_id
