@@ -757,9 +757,10 @@ class ChirpToHA:
         comand_topic = f"application/{self._application_id}/device/{dev_conf['dev_eui']}/command/down"
         discovery_config = sensor["entity_conf"].copy()
         discovery_config["device"] = device.copy()
-        discovery_config["device"]["name"] = (
-            dev_conf["dev_name"] if dev_conf["dev_name"] else "0x" + dev_conf["dev_eui"]
-        )
+        if not discovery_config["device"].get("name"):
+            discovery_config["device"]["name"] = (
+                dev_conf["dev_name"] if dev_conf["dev_name"] else "0x" + dev_conf["dev_eui"]
+            )
         if not device.get("identifiers"):
             discovery_config["device"]["identifiers"] = [
                 to_lower_case_no_blanks(BRIDGE_VENDOR + "_" + dev_conf["dev_eui"])
@@ -797,7 +798,8 @@ class ChirpToHA:
                 discovery_config[key] = status_topic
             if "{dev_eui}" in value:
                 discovery_config[key] = value.replace( "{dev_eui}", dev_conf["dev_eui"] )
-        discovery_config["enabled_by_default"] = True
+        if not discovery_config.get("enabled_by_default"):
+            discovery_config["enabled_by_default"] = True
         if self._bridge_init_time:
             discovery_config["time_stamp"] = self._bridge_init_time
         return {
