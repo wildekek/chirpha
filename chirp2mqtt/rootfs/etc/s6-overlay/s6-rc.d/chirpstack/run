@@ -7,6 +7,8 @@ BACKUPDONE="/data/chirpstack_backup_done"
 EXTPATH="/share/chirp2mqtt"
 DBFILE="chirp_db"
 CONFILE="/data/options.json"
+DEVICES="lorawan-devices"
+IMPORTED="$EXTPATH/$DEVICES/imported"
 
 backup_db() {
     if ! [ -d "$EXTPATH" ]; then
@@ -104,6 +106,28 @@ if ! [ -f "$INITIALIZED" ]; then
     if [[ $? -eq 0 ]]; then
         touch $INITIALIZED
     fi
+    rm -r /data/temp
+fi
+
+if [ -f "$EXTPATH/$DEVICES" ]; then
+    if ! [ -f "$IMPORTED" ]; then
+        chirpstack -c /etc/chirpstack import-legacy-lorawan-devices-repository -d "$EXTPATH/$DEVICES" >/dev/null
+        if [[ $? -eq 0 ]]; then
+            touch $IMPORTED
+        fi
+    fi
+fi
+
+IMPORT_ACTION=$(jq --raw-output '.import_actions // empty' $CONFILE)
+if ! [ "$IMPORT_ACTION" = "" ]; then
+    echo Importing LoraWan devices from: $IMPORT_ACTION
+    if [ -d "/data/temp" ]; then
+        rm -r /data/temp
+    fi
+    mkdir /data/temp
+    git clone $IMPORT_ACTION /data/temp/lorawan-devices >/dev/null 2>/dev/null
+    chirpstack -c /etc/chirpstack import-legacy-lorawan-devices-repository -d /data/temp/lorawan-devices >/dev/null
+    echo Importing completed with return code $?
     rm -r /data/temp
 fi
 

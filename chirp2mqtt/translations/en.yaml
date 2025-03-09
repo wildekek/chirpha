@@ -43,6 +43,10 @@ configuration:
     name: ChirpStack database actions
     description: >-
       Request ChirpStack database backup and/or restore to HA /share/chirp2mqtt folder
+  import_actions:
+    name: Import LoraWAN device templates from git repository
+    description: >-
+      Import LoraWAN device templates from git repository into ChirpStack database
   lora_region:
     name: Select Lora region
     description: >-

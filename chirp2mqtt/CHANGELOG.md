@@ -1,5 +1,9 @@
 <!-- https://developers.home-assistant.io/docs/add-ons/presentation#keeping-a-changelog -->
 
+## 1.1.133
+
+- Added option to import device templates from git repository.
+
 ## 1.1.132
 
 - HA MQTT integration component device name processing change - getHaDeviceInfo data now has highest priority, the same for entities and 'enabled_by_default'.

@@ -35,6 +35,9 @@ options_restore_age: 4
 options_online_per_device: 0
 options_log_level: info
 database_actions: None
+import_actions: https://github.com/brocaar/lorawan-devices
+lora_region: eu868
+chirpstack_secret: you-must-replace-this
 ```
 
 ### Option: `application_id` (optional)
@@ -92,6 +95,25 @@ Default value: false/off .
 ChirpStack database actions, one of 'None', 'Backup', 'Restore', 'Backup and restore' . 'Backup' - add-on takes database backup and stores it in /share/chirp2mqtt/chirp_db file and freeze execution. 'Restore' - restores database from /share/chirp2mqtt/chirp_db, renames backup file to chirp_db.restored and add-on continues service. 'Backup and restore' combines both 'Backup' and 'Restore': firstly applied creates backup file and stops; on second add-on start restores database and continues service. Last option might be handy to switch between add-on builds with different versions of Postgresql.
 
 Default value: 'None' .
+
+### Option: `import_actions`
+
+URL to git repository with LoraWAN device templates. Repository is imported before ChirsStack starts. Parameter must be reset after importing to empty string, otherwise import will be started again on next add-on start-up.
+
+Default(initial) value: 'https://github.com/brocaar/lorawan-devices' .
+
+### Option: `lora_region`
+
+Selects Lora region for ChirpSatck run.
+
+Default value: EU868 .
+
+### Option: `chirpstack_secret`
+
+Sets security string for ChirpStack operations.
+
+Default value: you-must-replace-this .
+
 
 ## Support
 
