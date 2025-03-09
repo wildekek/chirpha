@@ -98,7 +98,7 @@ Default value: 'None' .
 
 ### Option: `import_actions`
 
-URL to git repository with LoraWAN device templates. Repository is imported before ChirsStack starts. Parameter must be reset after importing to empty string, otherwise import will be started again on next add-on start-up.
+URL to git repository with LoraWAN device templates or 'none'. Repository is imported before ChirsStack starts. Parameter must be reset after importing to 'none', otherwise import will be started again on next add-on start-up.
 
 Default(initial) value: 'https://github.com/brocaar/lorawan-devices' .
 

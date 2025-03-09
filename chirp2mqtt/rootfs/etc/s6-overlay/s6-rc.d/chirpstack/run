@@ -119,15 +119,19 @@ if [ -f "$EXTPATH/$DEVICES" ]; then
 fi
 
 IMPORT_ACTION=$(jq --raw-output '.import_actions // empty' $CONFILE)
-if ! [ "$IMPORT_ACTION" = "" ]; then
+if ! [ "$IMPORT_ACTION" = "none" ]; then
     echo Importing LoraWan devices from: $IMPORT_ACTION
     if [ -d "/data/temp" ]; then
         rm -r /data/temp
     fi
     mkdir /data/temp
     git clone $IMPORT_ACTION /data/temp/lorawan-devices >/dev/null 2>/dev/null
-    chirpstack -c /etc/chirpstack import-legacy-lorawan-devices-repository -d /data/temp/lorawan-devices >/dev/null
-    echo Importing completed with return code $?
+    if [[ $? -eq 0 ]]; then
+        chirpstack -c /etc/chirpstack import-legacy-lorawan-devices-repository -d /data/temp/lorawan-devices >/dev/null
+        echo Importing completed with return code $?
+    else
+        echo git clone completed with return code $?
+    fi
     rm -r /data/temp
 fi
 
