@@ -490,7 +490,6 @@ def test_init_live_overlapping(caplog):
         for record in caplog.records:
             if subscribe in record.msg or unsubscribe in record.msg or live in record.msg:
                 filtered_log.append(record)
-        print(filtered_log)
         assert filtered_log[0].msg == subscribe     # from retained values restoration process
         assert filtered_log[1].msg == live          # manual live check request
         assert filtered_log[2].msg == unsubscribe   # done
@@ -506,7 +505,6 @@ def test_expire_after(caplog):
     def run_test_expire_after(config):
         time.sleep(MIN_SLEEP+MIN_SLEEP)
         config_topics = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).get_published(keep_history=True)
-        print("----------", config_topics)
         no_per_dev = common.count_messages(r'/config$', '"expire_after":', keep_history=True)    # to be received as subscribed
         assert no_per_dev == mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).stat_sensors
 
@@ -518,7 +516,6 @@ def test_expire_after_with_none(caplog):
     def run_test_expire_after_with_none(config):
         time.sleep(MIN_SLEEP+MIN_SLEEP)
         config_topics = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).get_published(keep_history=True)
-        print("----------", config_topics)
         no_per_dev = common.count_messages(r'/config$', '"expire_after":', keep_history=True)    # to be received as subscribed
         assert no_per_dev == 0
 
@@ -535,3 +532,22 @@ def test_not_expire_after(caplog):
         assert no_no_per_dev == mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).stat_sensors
 
     common.chirp_setup_and_run_test(caplog, run_test_not_expire_after, test_params=dict(devices=1, codec=0), allowed_msg_level=logging.WARNING)
+
+def test_dev_eui_conf(caplog):
+    """Test device specific configuration use for device and entity."""
+
+    def run_test_dev_eui_conf(config):
+        time.sleep(MIN_SLEEP+MIN_SLEEP)
+        config_topics = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).get_published(keep_history=True)
+        no_of_dev_defs = common.count_messages(r'/config$', 'dev_euidev_eui', keep_history=True)    # to be received as subscribed
+        assert no_of_dev_defs == 0  #   ensure that device specific configuration items do not appear in configuration message
+        no_of_dev_water = common.count_messages(r'/config$', '"device_class": "water"', keep_history=True)    # to be received as subscribed
+        assert no_of_dev_water == 1
+        no_of_dev_gas = common.count_messages(r'/config$', '"device_class": "gas"', keep_history=True)    # to be received as subscribed
+        assert no_of_dev_gas == 1
+        no_of_dev_1a = common.count_messages(r'/config$', '"model": "model1a"', keep_history=True)    # to be received as subscribed
+        assert no_of_dev_1a == 1
+        no_of_dev_1 = common.count_messages(r'/config$', '"model": "model1"', keep_history=True)    # to be received as subscribed
+        assert no_of_dev_1 == 1
+
+    common.chirp_setup_and_run_test(caplog, run_test_dev_eui_conf, test_params=dict(devices=2, codec=21), conf_file=REGULAR_CONFIGURATION_FILE, allowed_msg_level=logging.WARNING)

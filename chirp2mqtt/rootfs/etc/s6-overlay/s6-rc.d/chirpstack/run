@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-#echo "++ chirpstack ++"
 #set -x
 
 INITIALIZED="/data/chirpstack_tables_initialized"
@@ -93,22 +92,14 @@ if [ "$DB_ACTION" = "Backup" ]; then
     backup_db
 fi
 
+# prepare database for ChirpStack
 if ! [ -f "$INITIALIZED" ]; then
     su-exec postgres psql -c "drop database if exists chirpstack;"
     su-exec postgres psql -c "drop role if exists chirpstack;"
     su-exec postgres psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --no-password --no-psqlrc -f /etc/postgres_chirp.sql
-    if [ -d "/data/temp" ]; then
-        rm -r /data/temp
-    fi
-    mkdir /data/temp
-    git clone https://github.com/brocaar/lorawan-devices /data/temp/lorawan-devices >/dev/null 2>/dev/null
-    chirpstack -c /etc/chirpstack import-legacy-lorawan-devices-repository -d /data/temp/lorawan-devices >/dev/null
-    if [[ $? -eq 0 ]]; then
-        touch $INITIALIZED
-    fi
-    rm -r /data/temp
 fi
 
+# import LoraWan device templates if repository found on HA /share
 if [ -f "$EXTPATH/$DEVICES" ]; then
     if ! [ -f "$IMPORTED" ]; then
         chirpstack -c /etc/chirpstack import-legacy-lorawan-devices-repository -d "$EXTPATH/$DEVICES" >/dev/null
@@ -118,6 +109,7 @@ if [ -f "$EXTPATH/$DEVICES" ]; then
     fi
 fi
 
+# import LoraWan device templates from configured git repository - download and import
 IMPORT_ACTION=$(jq --raw-output '.import_actions // empty' $CONFILE)
 if ! [ "$IMPORT_ACTION" = "none" ]; then
     echo Importing LoraWan devices from: $IMPORT_ACTION
@@ -135,13 +127,15 @@ if ! [ "$IMPORT_ACTION" = "none" ]; then
     rm -r /data/temp
 fi
 
-#chirpstack -c /etc/chirpstack
+# copy chirpstack/gateway configuration files to /etc replacing package defaults, files are copied as is
 if [ -d "$EXTPATH/etc/chirpstack" ]; then
     cp $EXTPATH/etc/chirpstack/* /etc/chirpstack
 fi
+if [ -d "$EXTPATH/etc/chirpstack-gateway-bridge" ]; then
+    cp $EXTPATH/etc/chirpstack-gateway-bridge/* /etc/chirpstack-gateway-bridge
+fi
 
-#ls /package/admin/s6-overlay/command/with-contenv -l
-#bashio /usr/local/bin/upd_chirpstack_conf
+# remove any api keys owned by chirpha from ChirpStack database
 su-exec postgres psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --no-password --no-psqlrc -f /etc/delete_ha_api_keys.sql
 
 signal_chirpstack &

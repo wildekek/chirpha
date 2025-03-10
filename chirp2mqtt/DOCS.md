@@ -214,8 +214,7 @@ Device description contains manufacturer and model information that is used only
 Entities (sensors) structure contains
 - entity name; name must match one used in decode function that is defined above and is supplied by device vendor;
 - integration and entity_conf is defined on the next level of structure;
-- integration and entity_conf is defined on the next level of structure;
 - integration sets MQTT component integration name, this could be name of one of MQTT components, default is "sensor"; if device class is set in it may allow to automatically select integration;
-- entity_conf defines fields that control device sensor appearance in MQTT integration; value_template describes how to extract sensor value from payload, default is value_template: "{{ value_json.entity_name }}". Usually value need to be converted to specific type (int, float).
+- entity_conf defines fields that control device sensor appearance in MQTT integration; value_template describes how to extract sensor value from payload, default is value_template: "{{ value_json.entity_name }}". Usually value need to be converted to specific type (int, float).  On both device and entity levels substructure named 'dev_eui' followed by device's real eui with device specific settings for device/entity. All such substructures are deleted from final configuration message, but substructure elements are pushed level up if dev_eui matches.
 
 There are 4 special values in description structure returned by getHaDeviceInfo: "{None}", "{status_topic}", "{command_topic}", "{"dev_eui"}". Keys with value "{None}" are deleted during processing; "{status_topic}" replaced with ChirpStack's status topic name; "{command_topic}" replaced with ChirpStack's command topic name. Values with "{"dev_eui"}" are formatted to current dev_eui. There are several examples of getHaDeviceInfo for various devices in sub-directory 'getHaDeviceInfo'.

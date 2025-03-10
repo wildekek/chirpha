@@ -757,16 +757,22 @@ class ChirpToHA:
         comand_topic = f"application/{self._application_id}/device/{dev_conf['dev_eui']}/command/down"
         discovery_config = sensor["entity_conf"].copy()
         discovery_config["device"] = device.copy()
+        for key in list(discovery_config["device"]):
+            if key.startswith("dev_eui"):
+                if key == "dev_eui" + dev_conf["dev_eui"]:
+                    for dev_key in discovery_config["device"][key]:
+                        discovery_config["device"][dev_key] = discovery_config["device"][key][dev_key]
+                del discovery_config["device"][key]
         if not discovery_config["device"].get("name"):
             discovery_config["device"]["name"] = (
                 dev_conf["dev_name"] if dev_conf["dev_name"] else "0x" + dev_conf["dev_eui"]
             )
-        if not device.get("identifiers"):
+        if not discovery_config["device"].get("identifiers"):
             discovery_config["device"]["identifiers"] = [
                 to_lower_case_no_blanks(BRIDGE_VENDOR + "_" + dev_conf["dev_eui"])
             ]
             discovery_config["device"]["via_device"] = self._bridge_indentifier
-            discovery_config["availability"] = self.get_availability_element(dev_id, sensor, device, dev_conf)
+            discovery_config["availability"] = self.get_availability_element(dev_id, sensor, discovery_config["device"], dev_conf)
         discovery_config["origin"] = self._origin
         if not discovery_config.get("state_topic"):
             discovery_config["state_topic"] = status_topic
@@ -786,8 +792,13 @@ class ChirpToHA:
             )
         if self._expire_after and discovery_config.get("uplink_interval") and not discovery_config.get("expire_after"):
             discovery_config["expire_after"] = discovery_config["uplink_interval"]
-        discovery_config_enum = discovery_config.copy()
-        for key, value in discovery_config_enum.items():
+        for key in list(discovery_config):
+            value = discovery_config[key]
+            if key.startswith("dev_eui"):
+                if key == "dev_eui" + dev_conf["dev_eui"]:
+                    for dev_key in value:
+                        discovery_config[dev_key] = value[dev_key]
+                del discovery_config[key]
             if not isinstance(value, str):
                 continue
             if value == "{None}":
