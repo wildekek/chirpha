@@ -1,10 +1,10 @@
 <!-- https://developers.home-assistant.io/docs/add-ons/presentation#keeping-a-changelog -->
 
-## 1.1.134
+## 1.1.135
 
 - Added device eui specific parameter support via getHaDeviceInfo .
 
-## 1.1.133
+## 1.1.134
 
 - Added option to import device templates from git repository.
 
