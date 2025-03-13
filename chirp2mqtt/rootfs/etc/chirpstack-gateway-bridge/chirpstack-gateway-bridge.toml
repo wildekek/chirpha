@@ -1,3 +1,7 @@
+[general]
+# debug=5, info=4, warning=3, error=2, fatal=1, panic=0
+log_level=3
+
 # This configuration provides a Semtech UDP packet-forwarder backend and
 # integrates with a MQTT broker. Many options and defaults have been omitted
 # for simplicity.

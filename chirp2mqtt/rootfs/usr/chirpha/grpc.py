@@ -10,7 +10,8 @@ import re
 from chirpstack_api import api
 import grpc
 
-from .const import CONF_API_PORT, CONF_API_SERVER, CONF_APPLICATION_ID, CHIRPSTACK_TENANT, CHIRPSTACK_APPLICATION, ERRMSG_CODEC_ERROR, ERRMSG_DEVICE_IGNORED, WARMSG_APPID_WRONG, CHIRPSTACK_API_KEY_NAME
+from .const import CONF_API_PORT, CONF_API_SERVER, CONF_APPLICATION_ID, CHIRPSTACK_TENANT, CHIRPSTACK_APPLICATION, ERRMSG_CODEC_ERROR
+from .const import ERRMSG_DEVICE_IGNORED, WARMSG_APPID_WRONG, CHIRPSTACK_API_KEY_NAME, CONF_API_KEY
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -25,9 +26,12 @@ class ChirpGrpc:
         self._channel = grpc.insecure_channel(
             f"{self._config.get(CONF_API_SERVER)}:{self._config.get(CONF_API_PORT)}"
         )
-        token_message = subprocess.run(["chirpstack", "-c", "/etc/chirpstack", "create-api-key", "--name", CHIRPSTACK_API_KEY_NAME], capture_output=True, text=True).stdout
-        self._token_id = token_message.split("id: ")[-1].split("\n")[0]
-        bearer = token_message.split("token: ")[-1].rstrip("\n")
+        bearer = self._config.get(CONF_API_KEY)
+        self._token_id = "external"
+        if not bearer:
+            token_message = subprocess.run(["chirpstack", "-c", "/etc/chirpstack", "create-api-key", "--name", CHIRPSTACK_API_KEY_NAME], capture_output=True, text=True).stdout
+            self._token_id = token_message.split("id: ")[-1].split("\n")[0]
+            bearer = token_message.split("token: ")[-1].rstrip("\n")
         self._auth_token = [("authorization", f"Bearer {bearer}")]
         _LOGGER.info(
             "gRPC channel opened for %s:%s, token id %s",

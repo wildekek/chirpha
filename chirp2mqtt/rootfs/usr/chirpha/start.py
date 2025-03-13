@@ -105,10 +105,6 @@ class run_chirp_ha:
             if self._grpc_client:
                 _LOGGER.info("Closing gRPC connection")
                 self._grpc_client.close()
-                if self._config[CONF_APPLICATION_ID] != self._grpc_client._application_id and False:
-                    self._config[CONF_APPLICATION_ID] = self._grpc_client._application_id
-                    with open(CONFIGURATION_FILE, 'w') as file:
-                        json.dump(self._config, file)
                 self._grpc_client = None
 
 

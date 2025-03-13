@@ -40,6 +40,11 @@ from .const import (
     CONF_OPTIONS_ONLINE_PER_DEVICE,
     CONF_OPTIONS_LOG_LEVEL,
     CONF_OPTIONS_EXPIRE_AFTER,
+    DEFAULT_OPTIONS_LOG_LEVEL,
+    DEFAULT_OPTIONS_EXPIRE_AFTER,
+    DEFAULT_OPTIONS_ONLINE_PER_DEVICE,
+    DEFAULT_OPTIONS_START_DELAY,
+    DEFAULT_OPTIONS_RESTORE_AGE,
 )
 from .grpc import ChirpGrpc
 
@@ -120,13 +125,13 @@ class ChirpToHA:
         self._bridge_init_time = None
         self._cur_open_time = None
         self._live_on = False
-        self._expire_after = self._config.get(CONF_OPTIONS_EXPIRE_AFTER)
+        self._expire_after = self._config.get(CONF_OPTIONS_EXPIRE_AFTER, DEFAULT_OPTIONS_EXPIRE_AFTER)
         self._bridge_state_received = False
-        self._per_device_chk_interval = float(self._config.get(CONF_OPTIONS_ONLINE_PER_DEVICE))
+        self._per_device_chk_interval = float(self._config.get(CONF_OPTIONS_ONLINE_PER_DEVICE, DEFAULT_OPTIONS_ONLINE_PER_DEVICE))
         self._per_device_online = self._per_device_chk_interval!=0
         self._cur_opened_count = 0
-        self._discovery_delay = self._config.get(CONF_OPTIONS_START_DELAY)
-        self._cur_age = self._config.get(CONF_OPTIONS_RESTORE_AGE)
+        self._discovery_delay = self._config.get(CONF_OPTIONS_START_DELAY, DEFAULT_OPTIONS_START_DELAY)
+        self._cur_age = self._config.get(CONF_OPTIONS_RESTORE_AGE, DEFAULT_OPTIONS_RESTORE_AGE)
         self._devices_config_topics = set()
         self._old_devices_config_topics = set()
         self._messages_to_restore_values = []
@@ -157,8 +162,6 @@ class ChirpToHA:
             {
                 "topic": self._bridge_state_topic,
                 "value_template": "{{ value_json.state }}",
-            #    "payload_available": "online",
-            #    "payload_not_available": "offline",
             }
         ]
 
@@ -241,6 +244,7 @@ class ChirpToHA:
         bridge_publish_data = self.get_conf_data(
             BRIDGE_STATE_ID,
             {  #   'entities':
+                "integration": "binary_sensor",
                 "entity_conf": {
                     "state_topic": self._bridge_state_topic,
                     "value_template": "{{ value_json.state }}",
@@ -641,11 +645,11 @@ class ChirpToHA:
             time.sleep(self._discovery_delay)
             if not self._bridge_state_received:
                 self.publish(
-                    self._bridge_state_topic, f'{{"state": "online", "log_level": "{self._config.get(CONF_OPTIONS_LOG_LEVEL)}"}}', retain=True
+                    self._bridge_state_topic, f'{{"state": "online", "log_level": "{self._config.get(CONF_OPTIONS_LOG_LEVEL, DEFAULT_OPTIONS_LOG_LEVEL)}"}}', retain=True
                 )
                 _LOGGER.info(
                     "Bridge state turned on, log level %s",
-                    self._config.get(CONF_OPTIONS_LOG_LEVEL),
+                    self._config.get(CONF_OPTIONS_LOG_LEVEL, DEFAULT_OPTIONS_LOG_LEVEL),
                 )
             self.enable_cur()
             for restore_message in self._messages_to_restore_values:
@@ -717,7 +721,7 @@ class ChirpToHA:
         if not sensor.get("integration"):
             mqtt_integration = None
             device_class = sensor["entity_conf"].get("device_class")
-            if device_class:
+            if device_class and self._classes:
                 for integration in self._classes["integrations"]:
                     if device_class in self._classes.get(integration):
                         mqtt_integration = integration
@@ -799,6 +803,8 @@ class ChirpToHA:
                     for dev_key in value:
                         discovery_config[dev_key] = value[dev_key]
                 del discovery_config[key]
+        for key in list(discovery_config):
+            value = discovery_config[key]
             if not isinstance(value, str):
                 continue
             if value == "{None}":

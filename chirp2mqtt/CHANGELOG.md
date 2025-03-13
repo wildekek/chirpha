@@ -1,5 +1,10 @@
 <!-- https://developers.home-assistant.io/docs/add-ons/presentation#keeping-a-changelog -->
 
+## 1.1.136
+
+- Code synchronization with chirp integration .
+- Log level reduced to warnings for ChirpStack gateway .
+
 ## 1.1.135
 
 - Added device eui specific parameter support via getHaDeviceInfo .

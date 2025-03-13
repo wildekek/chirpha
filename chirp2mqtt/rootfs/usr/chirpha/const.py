@@ -2,6 +2,7 @@
 
 CONF_API_SERVER = "chirpstack_api_server"
 CONF_API_PORT = "server_port"
+CONF_API_KEY = "api_connection_key"
 CONF_APPLICATION_ID = "application_id"
 
 DEFAULT_API_SERVER = "localhost"
@@ -23,6 +24,9 @@ DEFAULT_OPTIONS_RESTORE_AGE = 4
 CONF_OPTIONS_LOG_LEVEL = "options_log_level"
 CONF_OPTIONS_ONLINE_PER_DEVICE = "options_online_per_device"
 CONF_OPTIONS_EXPIRE_AFTER = "options_add_expire_after"
+DEFAULT_OPTIONS_LOG_LEVEL = "info"
+DEFAULT_OPTIONS_EXPIRE_AFTER = False
+DEFAULT_OPTIONS_ONLINE_PER_DEVICE = 0
 
 CHIRPSTACK_TENANT = "HA owned"
 CHIRPSTACK_APPLICATION = "HA integration"
