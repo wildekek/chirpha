@@ -1,5 +1,9 @@
 <!-- https://developers.home-assistant.io/docs/add-ons/presentation#keeping-a-changelog -->
 
+## 1.1.137
+
+- Upgrade to ghcr.io/hassio-addons/base:17.2.1, CHIRPSTACK_VERSION: 4.11.1
+
 ## 1.1.136
 
 - Code synchronization with chirp integration .
