@@ -1,5 +1,10 @@
 <!-- https://developers.home-assistant.io/docs/add-ons/presentation#keeping-a-changelog -->
 
+## 1.1.138
+
+- DOCS.md updates: template importing and sensor naming details, added codec example for Makerfabs Agrosense AGLWPP01
+- Upgrade to ghcr.io/hassio-addons/base:17.2.4
+
 ## 1.1.137
 
 - Upgrade to ghcr.io/hassio-addons/base:17.2.1, CHIRPSTACK_VERSION: 4.11.1

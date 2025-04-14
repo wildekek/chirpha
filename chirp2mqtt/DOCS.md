@@ -98,7 +98,7 @@ Default value: 'None' .
 
 ### Option: `import_actions`
 
-URL to git repository with LoraWAN device templates or 'none'. Repository is imported before ChirsStack starts. Parameter must be reset after importing to 'none', otherwise import will be started again on next add-on start-up.
+URL to git repository with LoraWAN device templates or 'none'. Repository is imported before ChirsStack starts. Parameter must be reset after importing to 'none', otherwise import will be started again on next add-on start-up. Chirp2MQTT automatically imports repository from HA directory /share/chirp2mqtt/lorawan-devices and marks import by creating file 'imported' to prevent continuous imports.
 
 Default(initial) value: 'https://github.com/brocaar/lorawan-devices' .
 
@@ -212,7 +212,7 @@ Device description contains manufacturer and model information that is used only
 - identifier based on deveui to join all entities (sensors) together into device
 - via_device field to show bridge device as parent .
 Entities (sensors) structure contains
-- entity name; name must match one used in decode function that is defined above and is supplied by device vendor;
+- entity name; name must match one used in decode function that is defined above and is supplied by device vendor; this name will be replaced with one set in ChirpStack's device profile measurements;
 - integration and entity_conf is defined on the next level of structure;
 - integration sets MQTT component integration name, this could be name of one of MQTT components, default is "sensor"; if device class is set in it may allow to automatically select integration;
 - entity_conf defines fields that control device sensor appearance in MQTT integration; value_template describes how to extract sensor value from payload, default is value_template: "{{ value_json.entity_name }}". Usually value need to be converted to specific type (int, float).  On both device and entity levels substructure named 'dev_eui' followed by device's real eui with device specific settings for device/entity. All such substructures are deleted from final configuration message, but substructure elements are pushed level up if dev_eui matches.
