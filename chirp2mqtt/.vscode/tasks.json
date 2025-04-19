@@ -6,7 +6,7 @@
       "type": "docker-build",
       "dockerBuild": {
         "context": "${workspaceFolder}/chirp2mqtt",
-        "buildArgs": {"BUILD_FROM": "ghcr.io/hassio-addons/base:17.1.0", "BUILD_ARCH": "amd64",
+        "buildArgs": {"BUILD_FROM": "ghcr.io/hassio-addons/base:17.2.4", "BUILD_ARCH": "amd64",
         "CHIRPSTACK_VERSION": "4.11.0",
         "CHIRPSTACK_GATEWAY_BRIDGE_VERSION": "4.0.11"
       }

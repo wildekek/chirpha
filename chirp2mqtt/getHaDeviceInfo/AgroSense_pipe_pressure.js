@@ -67,7 +67,7 @@ function readExtUint(bytes, startPos){
 
 // Encoder function to be used in the TTN console for downlink payload（Fport 1）
 function encodeDownlink(input) {
-  var seconds = input.data.minutes * 60 * 1000; //minutes * 60;
+  var seconds = input.data.minutes * 60 ; //minutes * 60;
 //throw new Error("Reload time: " + JSON.stringify(input) + "+++++++");
 
 

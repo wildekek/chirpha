@@ -273,6 +273,21 @@ class mqtt:
             """Mock loop_start function."""
             return 0
 
+        def loop_read(self, max_packets: int = 1):
+            return self.loop()
+
+        def loop_misc(self):
+            return self.loop()
+
+        def loop(self, timeout: float = 1):
+            if self.on_connect:
+                reason_code = lambda: None
+                reason_code.is_failure = get_size("mqtt")==0
+                reason_code.value = 135
+                self.on_connect(None, None, None, reason_code, None)
+            self.disconnect()
+            return 0
+
         def loop_forever(self):
             """Mock loop_forever function."""
             if self.on_connect:
@@ -307,10 +322,8 @@ class mqtt:
                     payload_struct = json.loads(msg[1]) if msg[1] and len(msg[1]) > 0 else None
                     if payload_struct:
                         if self._stat_start_time != payload_struct["time_stamp"]:
+                            self.reset_stats()
                             self._stat_start_time = payload_struct["time_stamp"]
-                            self.stat_devices = 0
-                            self.stat_sensors = 0
-                            self._stat_dev_eui = None
                         self.stat_sensors += 1
                         if self._stat_dev_eui != sub_topics[2]:
                             self._stat_dev_eui = sub_topics[2]
@@ -373,12 +386,9 @@ class mqtt:
 class api:
     """ChirpStack api mock implementation."""
 
-    def TenantServiceStub(self):
-        """Get tenant service object."""
-        return api.TenantService()
-
-    class TenantService:
-        """Tenant service class mock."""
+    class TenantServiceStub(object):
+        def __init__(self, channel):
+            pass
 
         def List(self, listTenantsReq, metadata):
             """Get mocked list tenants request response."""
@@ -417,12 +427,9 @@ class api:
         request.tenant.max_gateway_count = None
         return request
 
-    def ApplicationServiceStub(self):
-        """Get application service object."""
-        return api.ApplicationService()
-
-    class ApplicationService:
-        """Application service class mock."""
+    class ApplicationServiceStub(object):
+        def __init__(self, channel):
+            pass
 
         def List(self, listApplicationsReq, metadata):
             """Get mocked applications list request response."""
@@ -478,14 +485,11 @@ class api:
         request.application.tenant_id = None
         return request
 
-    def DeviceServiceStub(self):
-        """Get device service object."""
-        return api.DeviceService()
+    class DeviceServiceStub(object):
+        def __init__(self, channel):
+            pass
 
-    class DeviceService:
-        """Device service class mock."""
-
-        def List(self, listDevicesReq, metadata):
+        def List(self, listDevicesReq, metadata=None):
             """Get mocked list devices request response."""
             no_of_devices = get_size("devices")
             request = lambda: None
@@ -523,6 +527,10 @@ class api:
             getdevcount[0] += 1
             return request
 
+        def Create(self, deviceReq, metadata):
+            request = lambda: None
+            return request
+
     def ListDevicesRequest():
         """Get list devices request object, only properties used in test are initialized."""
         request = lambda: None
@@ -536,12 +544,9 @@ class api:
         request.dev_eui = None
         return request
 
-    def DeviceProfileServiceStub(self):
-        """Get device profile service object."""
-        return api.DeviceProfileService()
-
-    class DeviceProfileService:
-        """Device profile service class mock."""
+    class DeviceProfileServiceStub(object):
+        def __init__(self, channel):
+            pass
 
         def List(self, listDeviceProfileReq, metadata):
             """Get response list object for device profile request."""
@@ -620,12 +625,10 @@ class api:
         request.limit = None
         return request
 
-    def InternalServiceStub(self):
-        """Get internal service object."""
-        return api.InternalService()
+    class InternalServiceStub(object):
+        def __init__(self, channel):
+            pass
 
-    class InternalService:
-        """Internal service class mock."""
         def DeleteApiKeyRequest():
             request = lambda: None
             request.id = None
@@ -657,39 +660,35 @@ class api:
             request.total_count = no_of_api_keys
             return request
 
-def insecure_channel(target, options=None, compression=None):
-    """Return Channel mock."""
-    return Channel()
-
-class Channel:
-    """Channel mock."""
-
-    def __init__(self) -> None:
-        """Prepare channel for test, raise exception if requested."""
-        if not get_size("grpc"):
-            raise Exception("Could not connect to grpc server") # pylint: disable=broad-exception-raised
-
-    def close(self):
-        """Close channel - dummy for mock."""
-        pass
-
 class grpc:
     """grpc interface mock."""
 
     def insecure_channel(self):
         """Return Channel mock."""
-        return grpc.Channel()
+        return grpc.Channel(None,None,None,None)
 
     class Channel:
         """Channel mock."""
+        def __init__(
+            self,
+            target: str,
+            options: None,
+            credentials: None,
+            compression: None,
+        ):
 
-        def __init__(self) -> None:
+        #def __init__(self) -> None:
             """Prepare channel for test, raise exception if requested."""
             if not get_size("grpc"):
                 raise Exception("Could not connect to grpc server") # pylint: disable=broad-exception-raised
 
+        def unary_unary(self,api,request_serializer=None,response_deserializer=None):
+            print("grpc ", api)
+            pass
+
         def close(self):
             """Close channel - dummy for mock."""
+            pass
 
 class dukpy:
     def __init__(self):

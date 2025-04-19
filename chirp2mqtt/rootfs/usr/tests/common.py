@@ -17,7 +17,7 @@ import chirpha.start as chirpha
 from chirpha.start import INTERNAL_CONFIG
 from chirpha.const import CONF_OPTIONS_LOG_LEVEL, BRIDGE_CONF_COUNT
 
-from .patches import api, message, mqtt, set_size, get_size, insecure_channel
+from .patches import api, message, mqtt, set_size, get_size , grpc
 
 REGULAR_CONFIGURATION_FILE ="test_configuration.json"
 REGULAR_CONFIGURATION_FILE_INFO ="test_configuration_info_log.json"
@@ -61,7 +61,8 @@ class run_chirp_ha:
         self.ch_tread.join()
 
 @mock.patch("chirpha.grpc.api", new=api)
-@mock.patch("chirpha.grpc.grpc.insecure_channel", new=insecure_channel)
+#@mock.patch("chirpha.grpc.grpc.insecure_channel", new=insecure_channel)
+@mock.patch("chirpha.grpc.grpc", new=grpc)
 @mock.patch("chirpha.mqtt.mqtt", new=mqtt)
 def chirp_setup_and_run_test(caplog, run_test_case, conf_file=REGULAR_CONFIGURATION_FILE, test_params=dict(), a_live_at_end=True, kill_at_end=False, check_msg_queue=True, allowed_msg_level=logging.INFO, no_ha_online=False):
     """Execute test case in standard configuration environment with grpc/mqtt mocks."""
@@ -94,7 +95,7 @@ def chirp_setup_and_run_test(caplog, run_test_case, conf_file=REGULAR_CONFIGURAT
                         mqtt.Client(mqtt.CallbackAPIVersion.VERSION2).wait_empty_queue()
                         if bridge_online == 1: break
                         time.sleep(0.1)
-                    #print("ooooooo ", no_ha_online, i, ha_online, 1 if not no_ha_online else 0, bridge_config, bridge_online, config_topics)
+                    print("ooooooo ", no_ha_online, i, ha_online, 1 if not no_ha_online else 0, bridge_config, bridge_online, config_topics)
                     assert ha_online == (1 if not no_ha_online else 0)   # 1 message conditionally sent from test environment
                     assert bridge_config == BRIDGE_CONF_COUNT
                     assert bridge_online == 1

@@ -1,5 +1,9 @@
 <!-- https://developers.home-assistant.io/docs/add-ons/presentation#keeping-a-changelog -->
 
+## 1.1.139
+
+- Test code synchronization/refactoring
+
 ## 1.1.138
 
 - DOCS.md updates: template importing and sensor naming details, added codec example for Makerfabs Agrosense AGLWPP01
