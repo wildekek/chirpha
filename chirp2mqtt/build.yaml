@@ -3,7 +3,7 @@ build_from:
   amd64: ghcr.io/hassio-addons/base:17.2.4
   armv7: ghcr.io/hassio-addons/base:17.2.4
 args:
-  CHIRPSTACK_VERSION: 4.11.1
+  CHIRPSTACK_VERSION: 4.12.1
   CHIRPSTACK_GATEWAY_BRIDGE_VERSION: 4.0.11
 
 #cosign:
