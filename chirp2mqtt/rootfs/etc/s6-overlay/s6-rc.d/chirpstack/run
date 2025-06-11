@@ -97,6 +97,12 @@ if ! [ -f "$INITIALIZED" ]; then
     su-exec postgres psql -c "drop database if exists chirpstack;"
     su-exec postgres psql -c "drop role if exists chirpstack;"
     su-exec postgres psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --no-password --no-psqlrc -f /etc/postgres_chirp.sql
+    if [[ $? -eq 0 ]]; then
+        touch $INITIALIZED
+        echo Database created
+    else
+        echo Database create failed, check logs for details
+    fi
 fi
 
 # import LoraWan device templates if repository found on HA /share

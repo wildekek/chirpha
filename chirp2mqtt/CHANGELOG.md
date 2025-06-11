@@ -1,5 +1,9 @@
 <!-- https://developers.home-assistant.io/docs/add-ons/presentation#keeping-a-changelog -->
 
+## 1.1.141
+
+- Fixed database re-creation on every add-on re-start
+
 ## 1.1.140
 
 - Upgrade to CHIRPSTACK_VERSION: 4.12.1
