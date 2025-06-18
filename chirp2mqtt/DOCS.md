@@ -117,9 +117,11 @@ Default value: you-must-replace-this .
 
 ## Support
 
-[chirpstack]: https://chirpstack.io
-[homeassisatnt]: https://www.home-assistant.io/
-[chirp2mqtt]: https://github.com/modrisb/chirpha
+[Chirpstack](https://chirpstack.io)
+
+[Home Assistant](https://www.home-assistant.io)
+
+[Chirp2mqtt](https://github.com/modrisb/chirpha)
 
 ## Codec updates
 
