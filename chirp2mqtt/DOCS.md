@@ -123,6 +123,11 @@ Default value: you-must-replace-this .
 
 [Chirp2mqtt](https://github.com/modrisb/chirpha)
 
+## Supported devices
+Home Assistant will [automatically discover](https://www.home-assistant.io/integrations/mqtt/#mqtt-discovery) devices and set the right entity information for supported devices. For this to work, modify the codec in the device profile with one of the [examples](https://github.com/modrisb/chirpha/tree/main/chirp2mqtt/getHaDeviceInfo).
+To modify or add new devices to the examples, see how to update codecs below.
+
+
 ## Codec updates
 
 Regular ChirpStack codec contains entries supporting payload decoding/encoding. Codec must be appended by function similar to:
