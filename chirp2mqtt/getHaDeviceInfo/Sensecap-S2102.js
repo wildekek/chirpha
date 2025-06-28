@@ -380,10 +380,29 @@ function getHaDeviceInfo() {
       },
       rssi:{
         entity_conf: {
+          name: "RSSI",
           value_template: "{{ value_json.rxInfo[-1].rssi | int }}",
           entity_category: "diagnostic",
           device_class: "signal_strength",
           unit_of_measurement: "dBm",
+          enabled_by_default: "false"
+        }
+      },
+      snr:{
+        entity_conf: {
+          name: "SNR",
+          value_template: "{{ value_json.rxInfo[-1].snr | float }}",
+          entity_category: "diagnostic",
+          device_class: "signal_strength",
+          unit_of_measurement: "dB",
+          enabled_by_default: "false"
+        }
+      },
+      eui:{
+        entity_conf: {
+          name: "EUI",
+          value_template: "{{ value_json.deviceInfo.devEui }}",
+          entity_category: "diagnostic"
         }
       }
     }
