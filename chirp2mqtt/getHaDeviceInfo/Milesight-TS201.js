@@ -320,6 +320,7 @@ function getHaDeviceInfo() {
           value_template: "{{ value_json.rxInfo[-1].snr | float }}",
           entity_category: "diagnostic",
           device_class: "signal_strength",
+          unit_of_measurement: "dB",
           enabled_by_default: "false"
         }
       },
