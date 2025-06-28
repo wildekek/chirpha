@@ -355,6 +355,7 @@ function getHaDeviceInfo() {
     entities: {
       temperature:{
         entity_conf: {
+          name: "Temperature",
           value_template: "{{ value_json.object.messages | selectattr('measurementId', 'equalto', 4097) | map(attribute='measurementValue') | list | first | float }}",
           state_class: "measurement",
           device_class: "temperature",
@@ -363,6 +364,7 @@ function getHaDeviceInfo() {
       },
       humidity:{
         entity_conf: {
+          name: "Humidity",
           value_template: "{{ value_json.object.messages | selectattr('measurementId', 'equalto', 4098) | map(attribute='measurementValue') | list | first | float }}",
           state_class: "measurement",
           device_class: "humidity",
@@ -372,6 +374,7 @@ function getHaDeviceInfo() {
       battery:{
         data_event: "status",
         entity_conf: {
+          name: "Battery",
           value_template: "{{ value_json.batteryLevel | int }}",
           entity_category: "diagnostic",
           device_class: "battery",

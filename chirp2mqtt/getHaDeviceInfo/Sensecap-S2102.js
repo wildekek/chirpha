@@ -355,6 +355,7 @@ function getHaDeviceInfo() {
     entities: {
       illuminance:{
         entity_conf: {
+          name: "Illuminance",
           value_template: "{{ value_json.object.messages | selectattr('measurementId', 'equalto', 4099) | map(attribute='measurementValue') | list | first | int }}",
           state_class: "measurement",
           device_class: "illuminance",
@@ -363,6 +364,7 @@ function getHaDeviceInfo() {
       },
       irradiance:{
         entity_conf: {
+          name: "Irradiance",
           value_template: "{{ value_json.object.messages | selectattr('measurementId', 'equalto', 4099) | map(attribute='measurementValue') | list | first | int  * 0.0079 | round(3) }}",
           state_class: "measurement",
           device_class: "irradiance",
@@ -372,6 +374,7 @@ function getHaDeviceInfo() {
       battery:{
         data_event: "status",
         entity_conf: {
+          name: "Battery",
           value_template: "{{ value_json.batteryLevel | int }}",
           entity_category: "diagnostic",
           device_class: "battery",
